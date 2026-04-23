@@ -6,14 +6,8 @@
 
 inline Size size_absolute(int32_t x, int32_t y) {
     return (Size) {
-        .x = (SizeConstraint) {
-            .type = SIZE_ABSOLUTE,
-            .value = x
-        },
-        .y = (SizeConstraint) {
-            .type = SIZE_ABSOLUTE,
-            .value = y
-        }
+        .x = (SizeConstraint) { .type = SIZE_ABSOLUTE, .value = x },
+        .y = (SizeConstraint) { .type = SIZE_ABSOLUTE, .value = y }
     };
 }
 
