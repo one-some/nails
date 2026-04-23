@@ -1,25 +1,23 @@
 #include <stdio.h>
-#include "raylib.h"
 
-#include "Vec.h"
-#include "SizeConstraint.h"
-
-typedef enum {
-    UI_CONTAINER,
-    UI_COLOR_RECT,
-} UIType;
-
-typedef struct {
-    UIType type;
-    Size size;
-    Vec* children;
-} UIComponent;
+#include "UI.h"
 
 int main() {
     UIComponent ui_root = (UIComponent) {
         .type = UI_CONTAINER,
         .size = size_absolute(500, 500)
     };
+
+    UIColorRect color_rect = (UIColorRect) {
+        .base = (UIComponent) {
+            .type = UI_COLOR_RECT,
+            .size = size_absolute(200, 200),
+            .position = (Vec2) { 1, 2 }
+        },
+        .color = RED
+    };
+
+    v_add(&ui_root.children, &color_rect);
 
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -39,7 +37,7 @@ int main() {
         BeginDrawing();
 
             ClearBackground(RAYWHITE);
-            DrawRectangle(0, 0, 100, 100, RED);
+            ui_render(&ui_root, NULL, (Vec2) { 0, 0 });
 
         EndDrawing();
     }
