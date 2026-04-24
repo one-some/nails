@@ -2,6 +2,8 @@
 
 #include "UI.h"
 
+static UIViewport* viewport;
+
 UIComponent* build_root() {
     UIVStack* ui_root = malloc(sizeof(UIVStack));
     *ui_root = (UIVStack) {
@@ -24,18 +26,32 @@ UIComponent* build_root() {
     };
     v_add(&ui_root->base.children, top);
 
-    UIColorRect* middle = malloc(sizeof(UIColorRect));
-    *middle = (UIColorRect) {
+    UIHStack* middle = malloc(sizeof(UIHStack));
+    *middle = (UIHStack) {
         .base = (UIComponent) {
-            .type = UI_COLOR_RECT,
+            .type = UI_HSTACK,
             .size = (Size) {
                 .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
                 .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
             }
         },
-        .color = BLUE
     };
     v_add(&ui_root->base.children, middle);
+
+    viewport = malloc(sizeof(UIViewport));
+    *viewport = (UIViewport) {
+        .base = (UIComponent) {
+            .type = UI_VIEWPORT,
+            .size = (Size) {
+                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
+                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
+            }
+        },
+    };
+    v_add(&middle->base.children, viewport);
+
+
+
 
     UIColorRect* bottom = malloc(sizeof(UIColorRect));
     *bottom = (UIColorRect) {
@@ -55,6 +71,12 @@ UIComponent* build_root() {
 
 int main() {
     UIComponent* ui_root = build_root();
+    ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
+
+    viewport->render_texture = LoadRenderTexture(
+        viewport->render_size.x, 
+        viewport->render_size.y,
+    );
 
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);

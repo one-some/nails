@@ -1,39 +1,66 @@
 #include <assert.h>
 
+#include <stdio.h>
 #include "UI.h"
 
-void ui_stack_layout(
-    UIComponent* component,
+inline int32_t* stack_vec_axis(
+    Vec2* vec,
+    AxisSelection axis
 ) {
-    int32_t play_room = AXIS(component->render_size);
+    return axis == AXIS_X ? &vec->x : &vec->y;
+}
+
+inline SizeConstraint* stack_size_axis(
+    Size* size,
+    AxisSelection axis
+) {
+    return axis == AXIS_X ? &size->x : &size->y;
+}
+
+void ui_stack_layout(
+    UIComponent* component
+) {
+    AxisSelection a_on = component->type == UI_VSTACK ? AXIS_Y : AXIS_X;
+    AxisSelection a_off = component->type == UI_VSTACK ? AXIS_X : AXIS_Y;
+
+    int32_t play_room = *stack_vec_axis(&component->render_size, a_on);
     int32_t position = 0;
     int32_t total_flex_pie = 0;
 
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
+        SizeConstraint* size = stack_size_axis(&child->size, a_on);
 
-        switch (child->size.y.type) {
+        switch (size->type) {
             case SIZE_ABSOLUTE:
-                play_room -= child->size.y.value;
+                play_room -= size->value;
                 break;
             case SIZE_FLEX_GROW:
-                total_flex_pie += child->size.y.value;
+                total_flex_pie += size->value;
                 break;
         }
     }
 
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
-        child->render_position.x = 0;
-        child->render_position.y = position;
 
-        child->render_size.x = component->render_size.x;
+        int32_t* pos_on = stack_vec_axis(&child->render_position, a_on);
+        int32_t* pos_off = stack_vec_axis(&child->render_position, a_off);
+        int32_t* size_on = stack_vec_axis(&child->render_size, a_on);
+        int32_t* size_off = stack_vec_axis(&child->render_size, a_off);
+
+        SizeConstraint* size_constraint_on = stack_size_axis(&child->size, a_on);
+
+        *pos_off = 0;
+        *pos_on = position;
+
+        *size_off = *stack_vec_axis(&component->render_size, a_off);
 
         if (child->size.y.type == SIZE_FLEX_GROW) {
-            child->render_size.y = (play_room / total_flex_pie) * child->size.y.value;
+            *size_on = (play_room / total_flex_pie) * size_constraint_on->value;
         }
 
-        position += child->render_size.y;
+        position += *size_on;
     }
 }
 
@@ -54,8 +81,7 @@ void ui_layout(
         component->type == UI_VSTACK
         || component->type == UI_HSTACK
     ) {
-#define AXIS(value) (component->type(value.x)
-#define OFFAXIS(value) (value.y)
+        ui_stack_layout(component);
     }
 
 
@@ -72,8 +98,6 @@ void ui_render(
     assert(component);
 
     switch (component->type) {
-        case UI_CONTAINER:
-            break;
         case UI_COLOR_RECT:
             DrawRectangle(
                 component->render_position.x,
@@ -82,6 +106,25 @@ void ui_render(
                 component->render_size.y,
                 ((UIColorRect*)component)->color
             );
+            break;
+        case UI_VIEWPORT:
+            DrawTexturePro(
+                ((UIViewport*)component)->render_texture.texture,
+                (Rectangle) {
+                    0,
+                    0,
+                    (float)(((UIViewport*)component)->render_texture.texture.width),
+                    (float)(((UIViewport*)component)->render_texture.texture.height),
+                },
+                (Rectangle) {
+                    component->render_position.x,
+                    component->render_position.y,
+                    component->render_size.x,
+                    component->render_size.y,
+                },
+                WHITE
+            );
+        default:
             break;
     }
 
