@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <assert.h>
 
 #include "UI.h"
 
@@ -50,8 +51,18 @@ UIComponent* build_root() {
     };
     v_add(&middle->base.children, viewport);
 
-
-
+    UIColorRect* right = malloc(sizeof(UIColorRect));
+    *right = (UIColorRect) {
+        .base = (UIComponent) {
+            .type = UI_COLOR_RECT,
+            .size = (Size) {
+                .x = (SizeConstraint) { .type = SIZE_ABSOLUTE,  .value = 200 },
+                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
+            }
+        },
+        .color = GREEN
+    };
+    v_add(&middle->base.children, right);
 
     UIColorRect* bottom = malloc(sizeof(UIColorRect));
     *bottom = (UIColorRect) {
@@ -73,11 +84,6 @@ int main() {
     UIComponent* ui_root = build_root();
     ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
 
-    viewport->render_texture = LoadRenderTexture(
-        viewport->render_size.x, 
-        viewport->render_size.y,
-    );
-
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(
@@ -86,6 +92,21 @@ int main() {
         "nailzz"
     );
 
+    viewport->render_texture = LoadRenderTexture(
+        viewport->base.render_size.x, 
+        viewport->base.render_size.y
+    );
+
+
+    Camera camera = { 0 };
+    camera.position = (Vector3){ 0.0f, 3.0f, 3.0f };
+    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
+    camera.fovy = 45.0f;
+    camera.projection = CAMERA_PERSPECTIVE;
+
+    Model model = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
+
     // TODO: On events only
     SetTargetFPS(60);
 
@@ -93,14 +114,34 @@ int main() {
         ui_root->size.x.value = GetRenderWidth();
         ui_root->size.y.value = GetRenderHeight();
 
-        BeginDrawing();
+        //Viewport
+        BeginTextureMode(viewport->render_texture);
+            ClearBackground(LIGHTGRAY);
+            BeginMode3D(camera);
 
+                DrawModelEx(
+                    model,
+                    (Vector3) { 0.0f, 0.0f, 0.0f },
+                    (Vector3) { 0.5f, 1.0f, 0.0f },
+                    0.0f,
+                    (Vector3) { 1.0f, 1.0f, 1.0f },
+                    WHITE
+                );
+
+                DrawGrid(10, 1.0f);
+
+            EndMode3D();
+        EndTextureMode();
+
+        // Window
+        BeginDrawing();
             ClearBackground(RAYWHITE);
             ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
             ui_render(ui_root, NULL);
-
         EndDrawing();
     }
+
+    UnloadModel(model);
 
     CloseWindow();
     return 0;

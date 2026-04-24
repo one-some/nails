@@ -3,28 +3,23 @@
 #include <stdio.h>
 #include "UI.h"
 
-inline int32_t* stack_vec_axis(
-    Vec2* vec,
-    AxisSelection axis
-) {
+inline int32_t* stack_vec_axis(Vec2* vec, AxisSelection axis) {
     return axis == AXIS_X ? &vec->x : &vec->y;
 }
 
-inline SizeConstraint* stack_size_axis(
-    Size* size,
-    AxisSelection axis
-) {
+inline SizeConstraint* stack_size_axis(Size* size, AxisSelection axis) {
     return axis == AXIS_X ? &size->x : &size->y;
 }
 
-void ui_stack_layout(
-    UIComponent* component
-) {
+void ui_stack_layout(UIComponent* component, Vec2 global_position) {
     AxisSelection a_on = component->type == UI_VSTACK ? AXIS_Y : AXIS_X;
     AxisSelection a_off = component->type == UI_VSTACK ? AXIS_X : AXIS_Y;
 
     int32_t play_room = *stack_vec_axis(&component->render_size, a_on);
-    int32_t position = 0;
+
+    int32_t position = *stack_vec_axis(&global_position, a_on);
+    int32_t global_pos_off = *stack_vec_axis(&global_position, a_off);
+
     int32_t total_flex_pie = 0;
 
     for (int i=0; i<component->children.length; i++) {
@@ -51,12 +46,12 @@ void ui_stack_layout(
 
         SizeConstraint* size_constraint_on = stack_size_axis(&child->size, a_on);
 
-        *pos_off = 0;
+        *pos_off = global_pos_off;
         *pos_on = position;
 
         *size_off = *stack_vec_axis(&component->render_size, a_off);
 
-        if (child->size.y.type == SIZE_FLEX_GROW) {
+        if (size_constraint_on->type == SIZE_FLEX_GROW) {
             *size_on = (play_room / total_flex_pie) * size_constraint_on->value;
         }
 
@@ -76,12 +71,13 @@ void ui_layout(
     if (component->size.y.type == SIZE_ABSOLUTE)
         component->render_size.y = component->size.y.value;
 
+    global_position = vec2_add(global_position, component->render_position);
 
     if (
         component->type == UI_VSTACK
         || component->type == UI_HSTACK
     ) {
-        ui_stack_layout(component);
+        ui_stack_layout(component, global_position);
     }
 
 
@@ -122,6 +118,8 @@ void ui_render(
                     component->render_size.x,
                     component->render_size.y,
                 },
+                (Vector2) { 0, 0 },
+                0.0f,
                 WHITE
             );
         default:

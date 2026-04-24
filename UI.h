@@ -47,6 +47,7 @@ typedef enum {
 
 void ui_layout(UIComponent* component, UIComponent* parent, Vec2 global_position);
 void ui_render(UIComponent* component, UIComponent* parent);
+void ui_stack_layout(UIComponent* component, Vec2 global_position);
 
 int32_t* stack_vec_axis(Vec2* vec, AxisSelection axis);
 SizeConstraint* stack_size_axis(Size* size, AxisSelection axis);
