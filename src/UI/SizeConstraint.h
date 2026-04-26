@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-#include "Vec2.h"
+#include "UI/Vec2.h"
 
 typedef enum {
     SIZE_ABSOLUTE,

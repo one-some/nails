@@ -1,8 +1,8 @@
 #include <assert.h>
 #include <stddef.h>
 
-#include "SizeConstraint.h"
-#include "Vec2.h"
+#include "UI/SizeConstraint.h"
+#include "UI/Vec2.h"
 
 inline Size size_absolute(int32_t x, int32_t y) {
     return (Size) {

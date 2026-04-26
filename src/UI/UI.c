@@ -1,7 +1,7 @@
 #include <assert.h>
 
 #include <stdio.h>
-#include "UI.h"
+#include "UI/UI.h"
 
 inline int32_t* stack_vec_axis(Vec2* vec, AxisSelection axis) {
     return axis == AXIS_X ? &vec->x : &vec->y;
@@ -132,3 +132,28 @@ void ui_render(
     }
 }
 
+
+void ui_propagate_event(UIComponent* component, Event* event) {
+    assert(component);
+    assert(event);
+
+    switch (event->type) {
+        case EVENT_MOUSE_DOWN:
+            if (component->event_handlers.on_mouse_down)
+                component->event_handlers.on_mouse_down((MouseButtonEvent*)event);
+            break;
+        case EVENT_MOUSE_UP:
+            if (component->event_handlers.on_mouse_up)
+                component->event_handlers.on_mouse_up((MouseButtonEvent*)event);
+            break;
+        case EVENT_MOUSE_MOVE:
+            if (component->event_handlers.on_mouse_move)
+                component->event_handlers.on_mouse_move((MouseMoveEvent*)event);
+            break;
+    }
+
+    for (int i=0; i<component->children.length; i++) {
+        UIComponent* child = component->children.data[i];
+        ui_propagate_event(child, event);
+   }
+}
