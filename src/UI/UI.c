@@ -154,6 +154,10 @@ void ui_propagate_event(UIComponent* component, Event* event) {
     assert(event);
 
     switch (event->type) {
+        case EVENT_TICK:
+            if (component->event_handlers.on_tick)
+                component->event_handlers.on_tick((TickEvent*)event);
+            break;
         case EVENT_MOUSE_DOWN:
             if (component->event_handlers.on_mouse_down)
                 component->event_handlers.on_mouse_down((MouseButtonEvent*)event);
@@ -165,6 +169,14 @@ void ui_propagate_event(UIComponent* component, Event* event) {
         case EVENT_MOUSE_MOVE:
             if (component->event_handlers.on_mouse_move)
                 component->event_handlers.on_mouse_move((MouseMoveEvent*)event);
+            break;
+        case EVENT_KEY_DOWN:
+            if (component->event_handlers.on_key_down)
+                component->event_handlers.on_key_down((KeyEvent*)event);
+            break;
+        case EVENT_KEY_UP:
+            if (component->event_handlers.on_key_up)
+                component->event_handlers.on_key_up((KeyEvent*)event);
             break;
     }
 

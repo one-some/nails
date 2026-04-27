@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <assert.h>
-#include <math.h>
 
+#include "Math.h"
 #include "UI/UI.h"
 #include "UI/Event.h"
 
@@ -12,7 +12,28 @@ typedef struct {
 
 static UIViewport* viewport;
 static ViewportCamera camera = { 0 };
+static Vector2 control_direction = { 0 };
 static bool dragging = false;
+
+void viewport_on_tick(TickEvent* event) {
+    const float speed = 0.2;
+
+    Vector3 forward = (Vector3) {
+        sin(camera.rotation.x) * cos(camera.rotation.y),
+        sin(camera.rotation.y),
+        cos(camera.rotation.x) * cos(camera.rotation.y)
+    };
+
+    Vector3 left = cross(forward, (Vector3) { 0, 1, 0 });
+
+    camera.camera.position.x += control_direction.y * speed * forward.x;
+    camera.camera.position.y += control_direction.y * speed * forward.y;
+    camera.camera.position.z += control_direction.y * speed * forward.z;
+
+    camera.camera.position.x += control_direction.x * speed * left.x;
+    camera.camera.position.y += control_direction.x * speed * left.y;
+    camera.camera.position.z += control_direction.x * speed * left.z;
+}
 
 void viewport_on_mouse_down(MouseButtonEvent* event) {
     if (event->button == MOUSE_BUTTON_RIGHT)
@@ -24,14 +45,6 @@ void viewport_on_mouse_up(MouseButtonEvent* event) {
         dragging = false;
 }
 
-Vector3 normalize(Vector3 vec) {
-    float s = abs(vec.x + vec.y + vec.z);
-    return (Vector3) {
-        .x = vec.x / s,
-        .y = vec.y / s,
-        .z = vec.z / s
-    };
-}
 
 void look_at(Vector3 pos) {
     Vector3 diff = normalize((Vector3) {
@@ -46,9 +59,42 @@ void look_at(Vector3 pos) {
 
 void viewport_on_mouse_move(MouseMoveEvent* event) {
     if (!dragging) return;
-    printf("%d, %d\n", event->delta.x, event->delta.y);
-    camera.rotation.x += (float)event->delta.x * 0.005;
-    camera.rotation.y -= (float)event->delta.y * 0.005;
+    camera.rotation.x -= (float)event->delta.x * 0.008;
+    camera.rotation.y += (float)event->delta.y * 0.005;
+}
+
+void viewport_on_key_down(KeyEvent* event) {
+    switch (event->key) {
+        case KEY_W:
+            control_direction.y = 1.0f;
+            break;
+        case KEY_S:
+            control_direction.y = -1.0f;
+            break;
+        case KEY_A:
+            control_direction.x = -1.0f;
+            break;
+        case KEY_D:
+            control_direction.x = 1.0f;
+            break;
+        default:
+            break;
+    }
+}
+
+void viewport_on_key_up(KeyEvent* event) {
+    switch (event->key) {
+        case KEY_W:
+        case KEY_S:
+            control_direction.y = 0.0f;
+            break;
+        case KEY_A:
+        case KEY_D:
+            control_direction.x = 0.0f;
+            break;
+        default:
+            break;
+    }
 }
 
 UIComponent* build_root() {
@@ -56,7 +102,7 @@ UIComponent* build_root() {
     *ui_root = (UIVStack) {
         .base = (UIComponent) {
             .type = UI_VSTACK,
-            .size = size_absolute(500, 500)
+            .size = size_absolute(800, 500)
         }
     };
 
@@ -109,9 +155,12 @@ UIComponent* build_root() {
         },
     };
     v_add(&middle->base.children, viewport);
+    viewport->base.event_handlers.on_tick = &viewport_on_tick;
     viewport->base.event_handlers.on_mouse_down = &viewport_on_mouse_down;
     viewport->base.event_handlers.on_mouse_up = &viewport_on_mouse_up;
     viewport->base.event_handlers.on_mouse_move = &viewport_on_mouse_move;
+    viewport->base.event_handlers.on_key_down = &viewport_on_key_down;
+    viewport->base.event_handlers.on_key_up = &viewport_on_key_up;
 
     UIColorRect* right = malloc(sizeof(UIColorRect));
     *right = (UIColorRect) {
@@ -125,6 +174,19 @@ UIComponent* build_root() {
         .color = GREEN
     };
     v_add(&middle->base.children, right);
+
+    //UILabel* ll = malloc(sizeof(UILabel));
+    //*ll = (UILabel) {
+    //    .base = (UIComponent) {
+    //        .type = UI_LABEL,
+    //        .size = (Size) {
+    //            .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
+    //            .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
+    //        }
+    //    },
+    //    .text = "This old town is filled with sin\nIt'll swallow you in",
+    //};
+    //v_add(&right->base.children, ll);
 
     UIColorRect* bottom = malloc(sizeof(UIColorRect));
     *bottom = (UIColorRect) {
@@ -173,11 +235,18 @@ int main() {
     uint32_t mouse_buttons_down = 0;
     Vec2 mouse_position = { 0 };
     Vec2 window_size = { 0 };
+    // This suks
+    bool keys_down[512] = { 0 };
 
     // TODO: On events only
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
+        TickEvent tick_event = (TickEvent) {
+            .base = (Event) { .type = EVENT_TICK },
+        };
+        ui_propagate_event(ui_root, (Event*)&tick_event);
+
         uint32_t new_mouse_buttons_down = 0;
         for (int i=0; i<=MOUSE_BUTTON_BACK; i++) {
             uint32_t mask = 1 << i;
@@ -203,6 +272,24 @@ int main() {
             }
         }
         mouse_buttons_down = new_mouse_buttons_down;
+
+        for (int i=0; i<512; i++) {
+            bool pressed_now = IsKeyDown(i);
+            bool pressed_then = keys_down[i];
+
+            if (pressed_now == pressed_then)
+                continue;
+
+            keys_down[i] = pressed_now;
+
+            KeyEvent event = (KeyEvent) {
+                .base = (Event) {
+                    .type = pressed_now ? EVENT_KEY_DOWN : EVENT_KEY_UP
+                },
+                .key = i
+            };
+            ui_propagate_event(ui_root, (Event*)&event);
+        }
 
 
         Vec2 new_mouse_position = {

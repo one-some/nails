@@ -16,9 +16,15 @@ typedef enum {
 } UIType;
 
 typedef struct {
+    void (*on_tick)(TickEvent* event);
+
     void (*on_mouse_down)(MouseButtonEvent* event);
     void (*on_mouse_up)(MouseButtonEvent* event);
+
     void (*on_mouse_move)(MouseMoveEvent* event);
+
+    void (*on_key_up)(KeyEvent* event);
+    void (*on_key_down)(KeyEvent* event);
 } EventHandlers;
 
 typedef struct {
