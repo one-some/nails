@@ -1,6 +1,6 @@
 TARGET = nails
 CC     = gcc
-CFLAGS = -g -Wall -lraylib -lm -fsanitize=address -Isrc
+CFLAGS = -g -Wall -Wpedantic -lraylib -lm -fsanitize=address -Isrc
 LDFLAGS = $(CFLAGS)
 
 .PHONY: default all clean run

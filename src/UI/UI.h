@@ -11,7 +11,8 @@ typedef enum {
     UI_VSTACK,
     UI_HSTACK,
     UI_COLOR_RECT,
-    UI_VIEWPORT
+    UI_VIEWPORT,
+    UI_LABEL
 } UIType;
 
 typedef struct {
@@ -48,11 +49,18 @@ typedef struct {
     RenderTexture2D render_texture;
 } UIViewport;
 
+typedef struct {
+    UIComponent base;
+    const char* text;
+} UILabel;
+
 
 typedef enum {
     AXIS_X,
     AXIS_Y
 } AxisSelection;
+
+extern Font ui_font;
 
 void ui_layout(UIComponent* component, UIComponent* parent, Vec2 global_position);
 void ui_render(UIComponent* component, UIComponent* parent);

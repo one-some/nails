@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include "UI/UI.h"
 
+Font ui_font;
+
 inline int32_t* stack_vec_axis(Vec2* vec, AxisSelection axis) {
     return axis == AXIS_X ? &vec->x : &vec->y;
 }
@@ -122,6 +124,20 @@ void ui_render(
                 0.0f,
                 WHITE
             );
+            break;
+        case UI_LABEL:
+            DrawTextEx(
+                ui_font,
+                ((UILabel*)component)->text,
+                (Vector2) {
+                    component->render_position.x,
+                    component->render_position.y,
+                },
+                (float)ui_font.baseSize,
+                2,
+                WHITE
+            );
+            break;
         default:
             break;
     }

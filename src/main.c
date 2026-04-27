@@ -5,8 +5,13 @@
 #include "UI/UI.h"
 #include "UI/Event.h"
 
+typedef struct {
+    Camera camera;
+    Vector3 rotation;
+} ViewportCamera;
+
 static UIViewport* viewport;
-static Vector3 camera_rotation;
+static ViewportCamera camera = { 0 };
 static bool dragging = false;
 
 void viewport_on_mouse_down(MouseButtonEvent* event) {
@@ -19,11 +24,31 @@ void viewport_on_mouse_up(MouseButtonEvent* event) {
         dragging = false;
 }
 
+Vector3 normalize(Vector3 vec) {
+    float s = abs(vec.x + vec.y + vec.z);
+    return (Vector3) {
+        .x = vec.x / s,
+        .y = vec.y / s,
+        .z = vec.z / s
+    };
+}
+
+void look_at(Vector3 pos) {
+    Vector3 diff = normalize((Vector3) {
+        .x = pos.x - camera.camera.position.x,
+        .y = pos.y - camera.camera.position.y,
+        .z = pos.z - camera.camera.position.z
+    });
+
+    camera.rotation.x = atan2(diff.z, diff.x);
+    camera.rotation.y = cos(diff.y);
+}
+
 void viewport_on_mouse_move(MouseMoveEvent* event) {
     if (!dragging) return;
     printf("%d, %d\n", event->delta.x, event->delta.y);
-    camera_rotation.x += (float)event->delta.x * 0.005;
-    camera_rotation.y -= (float)event->delta.y * 0.005;
+    camera.rotation.x += (float)event->delta.x * 0.005;
+    camera.rotation.y -= (float)event->delta.y * 0.005;
 }
 
 UIComponent* build_root() {
@@ -47,6 +72,19 @@ UIComponent* build_root() {
         .color = RED
     };
     v_add(&ui_root->base.children, top);
+
+    UILabel* label = malloc(sizeof(UILabel));
+    *label = (UILabel) {
+        .base = (UIComponent) {
+            .type = UI_LABEL,
+            .size = (Size) {
+                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
+                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
+            }
+        },
+        .text = "nailzz! olympic girl drama",
+    };
+    v_add(&top->base.children, label);
 
     UIHStack* middle = malloc(sizeof(UIHStack));
     *middle = (UIHStack) {
@@ -115,18 +153,20 @@ int main() {
         ui_root->size.y.value,
         "nailzz"
     );
+    ui_font = LoadFontEx("ibm.ttf", 24, NULL, 0);
+    SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
 
     viewport->render_texture = LoadRenderTexture(
         viewport->base.render_size.x, 
         viewport->base.render_size.y
     );
 
-    Camera camera = { 0 };
-    camera.position = (Vector3){ 0.0f, -3.0f, 3.0f };
-    camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
-    camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
-    camera.fovy = 70.0f;
-    camera.projection = CAMERA_PERSPECTIVE;
+    camera.camera.position = (Vector3){ 3.0f, -3.0f, 3.0f };
+    camera.camera.target = (Vector3){ 0.0f, 0.0f, 0.0f };
+    camera.camera.up = (Vector3){ 0.0f, 1.0f, 0.0f };
+    camera.camera.fovy = 70.0f;
+    camera.camera.projection = CAMERA_PERSPECTIVE;
+    look_at((Vector3) { 0.0f, 0.0f, 0.0f });
 
     Model model = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
 
@@ -180,7 +220,6 @@ int main() {
             ui_propagate_event(ui_root, (Event*)&event);
         }
 
-
         Vec2 new_window_size = {
             .x = GetRenderWidth(),
             .y = GetRenderHeight()
@@ -201,16 +240,16 @@ int main() {
         }
 
 
-        camera_rotation.y = fmax(fmin((PI / 2.0f) + 0.01, camera_rotation.y), -(PI / 2.0f) - 0.01);
-        camera.target = camera.position;
-        camera.target.x += sin(camera_rotation.x) * cos(camera_rotation.y);
-        camera.target.y += sin(camera_rotation.y);
-        camera.target.z += cos(camera_rotation.x) * cos(camera_rotation.y);
+        camera.rotation.y = fmax(fmin((PI / 2.0f) + 0.01, camera.rotation.y), -(PI / 2.0f) - 0.01);
+        camera.camera.target = camera.camera.position;
+        camera.camera.target.x += sin(camera.rotation.x) * cos(camera.rotation.y);
+        camera.camera.target.y += sin(camera.rotation.y);
+        camera.camera.target.z += cos(camera.rotation.x) * cos(camera.rotation.y);
 
         //Viewport
         BeginTextureMode(viewport->render_texture);
             ClearBackground(BLACK);
-            BeginMode3D(camera);
+            BeginMode3D(*(Camera*)&camera);
 
                 DrawModelEx(
                     model,
@@ -234,6 +273,7 @@ int main() {
     }
 
     UnloadModel(model);
+    UnloadFont(ui_font);
 
     CloseWindow();
     return 0;
