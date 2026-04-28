@@ -2,6 +2,7 @@
 #include <assert.h>
 
 #include "Math.h"
+#include "Primitive.h"
 #include "UI/UI.h"
 #include "UI/Event.h"
 
@@ -10,10 +11,21 @@ typedef struct {
     Vector3 rotation;
 } ViewportCamera;
 
+typedef struct {
+    Primitive* target;
+    bool pulling;
+    Vector3 normal;
+    Vector3 point;
+    Vector2 start_mouse;
+    float pull;
+} PullTarget;
+
 static UIViewport* viewport;
 static ViewportCamera camera = { 0 };
 static Vector2 control_direction = { 0 };
-static bool dragging = false;
+static PullTarget pull_target = { 0 };
+static bool rotating_camera = false;
+static Primitive* box;
 
 void viewport_on_tick(TickEvent* event) {
     const float speed = 0.2;
@@ -36,17 +48,21 @@ void viewport_on_tick(TickEvent* event) {
 }
 
 void viewport_on_mouse_down(MouseButtonEvent* event) {
-    if (event->button == MOUSE_BUTTON_RIGHT) {
-        dragging = true;
-        //DisableCursor();
+    if (event->button == MOUSE_BUTTON_LEFT) {
+        if (pull_target.target)
+            pull_target.pulling = true;
     }
+
+    if (event->button == MOUSE_BUTTON_RIGHT)
+        rotating_camera = true;
 }
 
 void viewport_on_mouse_up(MouseButtonEvent* event) {
-    if (event->button == MOUSE_BUTTON_RIGHT) {
-        dragging = false;
-        //EnableCursor();
-    }
+    if (event->button == MOUSE_BUTTON_LEFT)
+        pull_target.pulling = false;
+
+    if (event->button == MOUSE_BUTTON_RIGHT)
+        rotating_camera = false;
 }
 
 
@@ -62,9 +78,72 @@ void look_at(Vector3 pos) {
 }
 
 void viewport_on_mouse_move(MouseMoveEvent* event) {
-    if (!dragging) return;
-    camera.rotation.x -= (float)event->delta.x * 0.008;
-    camera.rotation.y += (float)event->delta.y * 0.005;
+    Vector2 mouse_pos = (Vector2) {
+        event->position.x - viewport->base.render_position.x,
+        viewport->base.render_size.y - (event->position.y - viewport->base.render_position.y)
+    };
+
+    if (pull_target.pulling) {
+        Vector2 hit = GetWorldToScreenEx(
+            pull_target.point,
+            camera.camera,
+            viewport->base.render_size.x,
+            viewport->base.render_size.y
+        );
+
+        Vector2 extended = GetWorldToScreenEx(
+            (Vector3) {
+                pull_target.point.x + pull_target.normal.x,
+                pull_target.point.y + pull_target.normal.y,
+                pull_target.point.z + pull_target.normal.z
+            },
+            camera.camera,
+            viewport->base.render_size.x,
+            viewport->base.render_size.y
+        );
+
+        Vector2 direction = { extended.x - hit.x, extended.y - hit.y };
+        float pixelRatio = sqrtf(direction.x * direction.x + direction.y * direction.y);
+        direction.x /= pixelRatio;
+        direction.y /= pixelRatio;
+
+        Vector2 mouse_delta = {
+            mouse_pos.x - pull_target.start_mouse.x,
+            mouse_pos.y - pull_target.start_mouse.y
+        };
+
+        float px = (mouse_delta.x * direction.x) + (mouse_delta.y * direction.y);
+        float units = px / pixelRatio;
+        float oomph = units - pull_target.pull;
+
+        printf("Pull: %f\n", oomph);
+        prim_resize(box, pull_target.normal, oomph);
+        
+        pull_target.pull = units;
+    } else {
+        Ray ray = GetScreenToWorldRayEx(
+            mouse_pos,
+            camera.camera,
+            viewport->base.render_size.x,
+            viewport->base.render_size.y
+        );
+        RayCollision collision = prim_ray_collide(box, ray);
+
+        pull_target.target = collision.hit ? box : NULL;
+        pull_target.pull = 0.0f;
+
+        if (collision.hit) {
+            printf("%f\n", collision.distance);
+            pull_target.normal = collision.normal;
+            pull_target.point = collision.point;
+            pull_target.start_mouse = mouse_pos;
+        }
+    }
+
+    if (rotating_camera) {
+        camera.rotation.x -= (float)event->delta.x * 0.008;
+        camera.rotation.y += (float)event->delta.y * 0.005;
+    }
 }
 
 void viewport_on_key_down(KeyEvent* event) {
@@ -222,6 +301,8 @@ int main() {
     ui_font = LoadFontEx("ibm.ttf", 24, NULL, 0);
     SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
 
+    box = (Primitive*)make_box();
+
     viewport->render_texture = LoadRenderTexture(
         viewport->base.render_size.x, 
         viewport->base.render_size.y
@@ -234,8 +315,6 @@ int main() {
     camera.camera.projection = CAMERA_PERSPECTIVE;
     look_at((Vector3) { 0.0f, 0.0f, 0.0f });
 
-    Model model = LoadModelFromMesh(GenMeshCube(1.0f, 1.0f, 1.0f));
-
     uint32_t mouse_buttons_down = 0;
     Vec2 mouse_position = { 0 };
     Vec2 window_size = { 0 };
@@ -246,6 +325,12 @@ int main() {
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
+        camera.rotation.y = fmax(fmin((PI / 2.0f) + 0.01, camera.rotation.y), -(PI / 2.0f) - 0.01);
+        camera.camera.target = camera.camera.position;
+        camera.camera.target.x += sin(camera.rotation.x) * cos(camera.rotation.y);
+        camera.camera.target.y += sin(camera.rotation.y);
+        camera.camera.target.z += cos(camera.rotation.x) * cos(camera.rotation.y);
+
         TickEvent tick_event = (TickEvent) {
             .base = (Event) { .type = EVENT_TICK },
         };
@@ -331,25 +416,53 @@ int main() {
         }
 
 
-        camera.rotation.y = fmax(fmin((PI / 2.0f) + 0.01, camera.rotation.y), -(PI / 2.0f) - 0.01);
-        camera.camera.target = camera.camera.position;
-        camera.camera.target.x += sin(camera.rotation.x) * cos(camera.rotation.y);
-        camera.camera.target.y += sin(camera.rotation.y);
-        camera.camera.target.z += cos(camera.rotation.x) * cos(camera.rotation.y);
-
         //Viewport
         BeginTextureMode(viewport->render_texture);
             ClearBackground(BLACK);
-            BeginMode3D(*(Camera*)&camera);
-
-                DrawModelEx(
-                    model,
-                    (Vector3) { 0.0f, 0.0f, 0.0f },
-                    (Vector3) { 0.5f, 1.0f, 0.0f },
-                    0.0f,
-                    (Vector3) { 1.0f, 1.0f, 1.0f },
+            BeginMode3D(camera.camera);
+                Vector3 size = vec3_sub(box->bounds.max, box->bounds.min);
+                Vector3 pos = vec3_add(
+                    box->bounds.min,
+                    (Vector3) { size.x / 2.0f, size.y / 2.0f, size.x / 2.0f }
+                );
+                DrawCubeV(
+                    pos,
+                    size,
                     WHITE
                 );
+
+                if (pull_target.target) {
+                    Vector3 proj = {
+                        pull_target.normal.x * size.x,
+                        pull_target.normal.y * size.y,
+                        pull_target.normal.z * size.z
+                    };
+
+                    Vector3 flatty = {
+                        size.x * (1.0f - abs(pull_target.normal.x)),
+                        size.y * (1.0f - abs(pull_target.normal.y)),
+                        size.z * (1.0f - abs(pull_target.normal.z))
+                    };
+
+                    proj = vec3_add(
+                        proj,
+                        (Vector3) { flatty.x / 2.0f, flatty.y / 2.0f, flatty.z / 2.0f }
+                    );
+
+
+                    printf(
+                        "%f, %f, %f\n",
+                        flatty.x,
+                        flatty.y,
+                        flatty.z
+                    );
+
+                    DrawCubeV(
+                        proj,
+                        flatty,
+                        RED
+                    );
+                }
 
                 DrawGrid(10, 1.0f);
 
@@ -363,7 +476,6 @@ int main() {
         EndDrawing();
     }
 
-    UnloadModel(model);
     UnloadFont(ui_font);
 
     CloseWindow();

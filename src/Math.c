@@ -1,5 +1,21 @@
 #include "Math.h"
 
+Vector3 vec3_add(Vector3 a, Vector3 b) {
+    return (Vector3) {
+        a.x + b.x,
+        a.y + b.y,
+        a.z + b.z
+    };
+}
+
+Vector3 vec3_sub(Vector3 a, Vector3 b) {
+    return (Vector3) {
+        a.x - b.x,
+        a.y - b.y,
+        a.z - b.z
+    };
+}
+
 Vector3 cross(Vector3 a, Vector3 b) {
     return (Vector3) {
         .x = (a.y * b.z) - (a.z * b.y),
