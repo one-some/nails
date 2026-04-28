@@ -36,13 +36,17 @@ void viewport_on_tick(TickEvent* event) {
 }
 
 void viewport_on_mouse_down(MouseButtonEvent* event) {
-    if (event->button == MOUSE_BUTTON_RIGHT)
+    if (event->button == MOUSE_BUTTON_RIGHT) {
         dragging = true;
+        //DisableCursor();
+    }
 }
 
 void viewport_on_mouse_up(MouseButtonEvent* event) {
-    if (event->button == MOUSE_BUTTON_RIGHT)
+    if (event->button == MOUSE_BUTTON_RIGHT) {
         dragging = false;
+        //EnableCursor();
+    }
 }
 
 
