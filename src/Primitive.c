@@ -19,7 +19,13 @@ RayCollision prim_ray_collide(Primitive* prim, Ray ray) {
 }
 
 void prim_resize(Primitive* prim, Vector3 normal, float magnitude) {
-    prim->bounds.max.x += normal.x * magnitude;
-    prim->bounds.max.y += normal.y * magnitude;
-    prim->bounds.max.z += normal.z * magnitude;
+    printf("Resize %f (%f, %f, %f)\n", magnitude, normal.x, normal.y, normal.z);
+    // change max if resizing on positive axis, otherwise min
+    float* xAxis = normal.x > 0.0f ? &prim->bounds.max.x : &prim->bounds.min.x;
+    float* yAxis = normal.y > 0.0f ? &prim->bounds.max.y : &prim->bounds.min.y;
+    float* zAxis = normal.z > 0.0f ? &prim->bounds.max.z : &prim->bounds.min.z;
+
+    *(xAxis) += normal.x * magnitude;
+    *(yAxis) += normal.y * magnitude;
+    *(zAxis) += normal.z * magnitude;
 }

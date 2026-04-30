@@ -22,10 +22,11 @@ typedef struct {
 
 static UIViewport* viewport;
 static ViewportCamera camera = { 0 };
-static Vector2 control_direction = { 0 };
 static PullTarget pull_target = { 0 };
 static bool rotating_camera = false;
 static Primitive* box;
+
+static int grid_power = 0;
 
 void viewport_on_tick(TickEvent* event) {
     const float speed = 0.2;
@@ -36,15 +37,28 @@ void viewport_on_tick(TickEvent* event) {
         cos(camera.rotation.x) * cos(camera.rotation.y)
     };
 
-    Vector3 left = cross(forward, (Vector3) { 0, 1, 0 });
+    Vector3 up = { 0, 1, 0 };
+    Vector3 left = cross(forward, up);
 
-    camera.camera.position.x += control_direction.y * speed * forward.x;
-    camera.camera.position.y += control_direction.y * speed * forward.y;
-    camera.camera.position.z += control_direction.y * speed * forward.z;
+    // Literally wrote a whole event propagation thing to not
+    // use it here cuz it would be uggo #LOL
+    Vector3 direction = {
+        (IsKeyDown(KEY_D) ? 1.0f : 0.0f) + (IsKeyDown(KEY_A) ? -1.0f : 0.0f),
+        (IsKeyDown(KEY_Q) ? 1.0f : 0.0f) + (IsKeyDown(KEY_E) ? -1.0f : 0.0f),
+        (IsKeyDown(KEY_W) ? 1.0f : 0.0f) + (IsKeyDown(KEY_S) ? -1.0f : 0.0f)
+    };
 
-    camera.camera.position.x += control_direction.x * speed * left.x;
-    camera.camera.position.y += control_direction.x * speed * left.y;
-    camera.camera.position.z += control_direction.x * speed * left.z;
+    camera.camera.position.x += direction.x * speed * left.x;
+    camera.camera.position.y += direction.x * speed * left.y;
+    camera.camera.position.z += direction.x * speed * left.z;
+
+    camera.camera.position.x += direction.y * speed * up.x;
+    camera.camera.position.y += direction.y * speed * up.y;
+    camera.camera.position.z += direction.y * speed * up.z;
+
+    camera.camera.position.x += direction.z * speed * forward.x;
+    camera.camera.position.y += direction.z * speed * forward.y;
+    camera.camera.position.z += direction.z * speed * forward.z;
 }
 
 void viewport_on_mouse_down(MouseButtonEvent* event) {
@@ -63,6 +77,20 @@ void viewport_on_mouse_up(MouseButtonEvent* event) {
 
     if (event->button == MOUSE_BUTTON_RIGHT)
         rotating_camera = false;
+}
+
+void viewport_on_key_down(KeyEvent* event) {
+    switch (event->key) {
+        case KEY_ONE:
+            // yes these both suck
+            grid_power = fmax(grid_power - 1, -2);
+            break;
+        case KEY_TWO:
+            grid_power = fmin(grid_power + 1, 4);
+            break;
+        default:
+            break;
+    }
 }
 
 
@@ -113,11 +141,15 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
         };
 
         float px = (mouse_delta.x * direction.x) + (mouse_delta.y * direction.y);
-        float units = px / pixelRatio;
+
+        // TODO: Adjustable grid
+        const float grid_size = pow(2.0f, grid_power);
+        float units = (int)(px / pixelRatio / grid_size) * grid_size;
         float oomph = units - pull_target.pull;
 
-        printf("Pull: %f\n", oomph);
-        prim_resize(box, pull_target.normal, oomph);
+        if (fabs(oomph) > 0.001f) {
+            prim_resize(box, pull_target.normal, oomph);
+        }
         
         pull_target.pull = units;
     } else {
@@ -133,7 +165,6 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
         pull_target.pull = 0.0f;
 
         if (collision.hit) {
-            printf("%f\n", collision.distance);
             pull_target.normal = collision.normal;
             pull_target.point = collision.point;
             pull_target.start_mouse = mouse_pos;
@@ -143,40 +174,6 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
     if (rotating_camera) {
         camera.rotation.x -= (float)event->delta.x * 0.008;
         camera.rotation.y += (float)event->delta.y * 0.005;
-    }
-}
-
-void viewport_on_key_down(KeyEvent* event) {
-    switch (event->key) {
-        case KEY_W:
-            control_direction.y = 1.0f;
-            break;
-        case KEY_S:
-            control_direction.y = -1.0f;
-            break;
-        case KEY_A:
-            control_direction.x = -1.0f;
-            break;
-        case KEY_D:
-            control_direction.x = 1.0f;
-            break;
-        default:
-            break;
-    }
-}
-
-void viewport_on_key_up(KeyEvent* event) {
-    switch (event->key) {
-        case KEY_W:
-        case KEY_S:
-            control_direction.y = 0.0f;
-            break;
-        case KEY_A:
-        case KEY_D:
-            control_direction.x = 0.0f;
-            break;
-        default:
-            break;
     }
 }
 
@@ -243,7 +240,6 @@ UIComponent* build_root() {
     viewport->base.event_handlers.on_mouse_up = &viewport_on_mouse_up;
     viewport->base.event_handlers.on_mouse_move = &viewport_on_mouse_move;
     viewport->base.event_handlers.on_key_down = &viewport_on_key_down;
-    viewport->base.event_handlers.on_key_up = &viewport_on_key_up;
 
     UIColorRect* right = malloc(sizeof(UIColorRect));
     *right = (UIColorRect) {
@@ -325,12 +321,6 @@ int main() {
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
-        camera.rotation.y = fmax(fmin((PI / 2.0f) + 0.01, camera.rotation.y), -(PI / 2.0f) - 0.01);
-        camera.camera.target = camera.camera.position;
-        camera.camera.target.x += sin(camera.rotation.x) * cos(camera.rotation.y);
-        camera.camera.target.y += sin(camera.rotation.y);
-        camera.camera.target.z += cos(camera.rotation.x) * cos(camera.rotation.y);
-
         TickEvent tick_event = (TickEvent) {
             .base = (Event) { .type = EVENT_TICK },
         };
@@ -415,56 +405,48 @@ int main() {
             window_size = new_window_size;
         }
 
+        camera.rotation.y = fmax(fmin((PI / 2.0f) + 0.01, camera.rotation.y), -(PI / 2.0f) - 0.01);
+        camera.camera.target = camera.camera.position;
+        camera.camera.target.x += sin(camera.rotation.x) * cos(camera.rotation.y);
+        camera.camera.target.y += sin(camera.rotation.y);
+        camera.camera.target.z += cos(camera.rotation.x) * cos(camera.rotation.y);
 
         //Viewport
         BeginTextureMode(viewport->render_texture);
             ClearBackground(BLACK);
             BeginMode3D(camera.camera);
+                float grid_size = pow(2.0, grid_power);
+                DrawGrid(15.0f / grid_size, grid_size);
+
                 Vector3 size = vec3_sub(box->bounds.max, box->bounds.min);
                 Vector3 pos = vec3_add(
                     box->bounds.min,
-                    (Vector3) { size.x / 2.0f, size.y / 2.0f, size.x / 2.0f }
+                    (Vector3) { size.x / 2.0f, size.y / 2.0f, size.z / 2.0f }
                 );
-                DrawCubeV(
-                    pos,
-                    size,
-                    WHITE
-                );
+
+                DrawCubeV(pos, size, WHITE);
+                DrawCubeWiresV(pos, size, (Color) { 0, 0, 0, 0xAA });
+
 
                 if (pull_target.target) {
-                    Vector3 proj = {
-                        pull_target.normal.x * size.x,
-                        pull_target.normal.y * size.y,
-                        pull_target.normal.z * size.z
+                    Vector3 ghost_pos = {
+                        pos.x + (0.5 * size.x * pull_target.normal.x),
+                        pos.y + (0.5 * size.y * pull_target.normal.y),
+                        pos.z + (0.5 * size.z * pull_target.normal.z)
                     };
 
-                    Vector3 flatty = {
-                        size.x * (1.0f - abs(pull_target.normal.x)),
-                        size.y * (1.0f - abs(pull_target.normal.y)),
-                        size.z * (1.0f - abs(pull_target.normal.z))
+                    Vector3 ghost_size = {
+                        size.x * (1.0f - fabs(pull_target.normal.x)),
+                        size.y * (1.0f - fabs(pull_target.normal.y)),
+                        size.z * (1.0f - fabs(pull_target.normal.z))
                     };
-
-                    proj = vec3_add(
-                        proj,
-                        (Vector3) { flatty.x / 2.0f, flatty.y / 2.0f, flatty.z / 2.0f }
-                    );
-
-
-                    printf(
-                        "%f, %f, %f\n",
-                        flatty.x,
-                        flatty.y,
-                        flatty.z
-                    );
 
                     DrawCubeV(
-                        proj,
-                        flatty,
-                        RED
+                        ghost_pos,
+                        ghost_size,
+                        (Color) { 0xFF, 0x00, 0x00, 0xAA }
                     );
                 }
-
-                DrawGrid(10, 1.0f);
 
             EndMode3D();
         EndTextureMode();
