@@ -33,7 +33,6 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
     // TODO: Maybe track this in a MeshState flag or something with EMPTY, DIRTY, CLEAN, etc.
     if (!new) {
         UnloadMesh(prim->mesh);
-        printf("UNNLOAD\n");
     }
 
     prim->mesh = (Mesh) { 0 };
@@ -149,12 +148,10 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
 
     // We do a full reupload for now instead of updating the buffer, cuz we can't resize it
     // Future optimization idea would to be checking the size and maybe updating
-    printf("Upload\n");
     UploadMesh(&prim->mesh, false);
 }
 
 void prim_resize(Primitive* prim, Vector3 normal, float magnitude) {
-    printf("Resize %f (%f, %f, %f)\n", magnitude, normal.x, normal.y, normal.z);
     // change max if resizing on positive axis, otherwise min
     float* xAxis = normal.x > 0.0f ? &prim->bounds.max.x : &prim->bounds.min.x;
     float* yAxis = normal.y > 0.0f ? &prim->bounds.max.y : &prim->bounds.min.y;

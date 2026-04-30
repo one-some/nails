@@ -8,11 +8,11 @@
 
 typedef enum {
     UI_CONTAINER,
-    UI_VSTACK,
-    UI_HSTACK,
+    UI_STACK,
     UI_COLOR_RECT,
     UI_VIEWPORT,
-    UI_LABEL
+    UI_LABEL,
+    UI_FRAME,
 } UIType;
 
 typedef struct {
@@ -39,11 +39,8 @@ typedef struct {
 
 typedef struct {
     UIComponent base;
-} UIVStack;
-
-typedef struct {
-    UIComponent base;
-} UIHStack;
+    Axis axis;
+} UIStack;
 
 typedef struct {
     UIComponent base;
@@ -60,11 +57,17 @@ typedef struct {
     const char* text;
 } UILabel;
 
+typedef struct {
+    UIComponent base;
+    Color color;
+    int32_t margin_px;
+} UIFrame;
+
 
 typedef enum {
     AXIS_X,
     AXIS_Y
-} AxisSelection;
+} Axis;
 
 extern Font ui_font;
 
@@ -72,7 +75,7 @@ void ui_layout(UIComponent* component, UIComponent* parent, Vec2 global_position
 void ui_render(UIComponent* component, UIComponent* parent);
 void ui_stack_layout(UIComponent* component, Vec2 global_position);
 
-int32_t* stack_vec_axis(Vec2* vec, AxisSelection axis);
-SizeConstraint* stack_size_axis(Size* size, AxisSelection axis);
+int32_t* stack_vec_axis(Vec2* vec, Axis axis);
+SizeConstraint* stack_size_axis(Size* size, Axis axis);
 
 void ui_propagate_event(UIComponent* component, Event* event);

@@ -178,13 +178,37 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
 }
 
 UIComponent* build_root() {
-    UIVStack* ui_root = malloc(sizeof(UIVStack));
-    *ui_root = (UIVStack) {
+    UIComponent* ui_root = malloc(sizeof *ui_root);
+    *ui_root = (UIComponent) {
+        .type = UI_CONTAINER,
+        .size = size_absolute(800, 500)
+    };
+
+    UIVStack* primary = malloc(sizeof *primary);
+    *primary = (UIVStack) {
         .base = (UIComponent) {
             .type = UI_VSTACK,
-            .size = size_absolute(800, 500)
+            .size = (Size) {
+                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
+                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
+            }
         }
     };
+    v_add(&ui_root->children, primary);
+
+    UIFrame* material_picker = malloc(sizeof *material_picker);
+    *material_picker = (UIFrame) {
+        .base = (UIComponent) {
+            .type = UI_FRAME,
+            .size = (Size) {
+                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
+                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
+            }
+        },
+        .color = (Color) { 0x11, 0x11, 0x11, 0xF0 },
+        .margin_px = 12
+    };
+    v_add(&ui_root->children, material_picker);
 
     UIColorRect* top = malloc(sizeof(UIColorRect));
     *top = (UIColorRect) {
@@ -197,7 +221,7 @@ UIComponent* build_root() {
         },
         .color = RED
     };
-    v_add(&ui_root->base.children, top);
+    v_add(&primary->base.children, top);
 
     UILabel* label = malloc(sizeof(UILabel));
     *label = (UILabel) {
@@ -222,7 +246,7 @@ UIComponent* build_root() {
             }
         },
     };
-    v_add(&ui_root->base.children, middle);
+    v_add(&primary->base.children, middle);
 
     viewport = malloc(sizeof(UIViewport));
     *viewport = (UIViewport) {
@@ -246,7 +270,7 @@ UIComponent* build_root() {
         .base = (UIComponent) {
             .type = UI_COLOR_RECT,
             .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_ABSOLUTE,  .value = 200 },
+                .x = (SizeConstraint) { .type = SIZE_ABSOLUTE,  .value = 300 },
                 .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
             }
         },
@@ -266,19 +290,6 @@ UIComponent* build_root() {
     //    .text = "This old town is filled with sin\nIt'll swallow you in",
     //};
     //v_add(&right->base.children, ll);
-
-    UIColorRect* bottom = malloc(sizeof(UIColorRect));
-    *bottom = (UIColorRect) {
-        .base = (UIComponent) {
-            .type = UI_COLOR_RECT,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_ABSOLUTE,  .value = 20 }
-            }
-        },
-        .color = BLACK
-    };
-    v_add(&ui_root->base.children, bottom);
 
     return (UIComponent*)ui_root;
 }

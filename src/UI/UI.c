@@ -5,17 +5,17 @@
 
 Font ui_font;
 
-inline int32_t* stack_vec_axis(Vec2* vec, AxisSelection axis) {
+inline int32_t* stack_vec_axis(Vec2* vec, Axis axis) {
     return axis == AXIS_X ? &vec->x : &vec->y;
 }
 
-inline SizeConstraint* stack_size_axis(Size* size, AxisSelection axis) {
+inline SizeConstraint* stack_size_axis(Size* size, Axis axis) {
     return axis == AXIS_X ? &size->x : &size->y;
 }
 
 void ui_stack_layout(UIComponent* component, Vec2 global_position) {
-    AxisSelection a_on = component->type == UI_VSTACK ? AXIS_Y : AXIS_X;
-    AxisSelection a_off = component->type == UI_VSTACK ? AXIS_X : AXIS_Y;
+    Axis a_on = component->type == UI_VSTACK ? AXIS_Y : AXIS_X;
+    Axis a_off = component->type == UI_VSTACK ? AXIS_X : AXIS_Y;
 
     int32_t play_room = *stack_vec_axis(&component->render_size, a_on);
 
@@ -73,6 +73,12 @@ void ui_layout(
     if (component->size.y.type == SIZE_ABSOLUTE)
         component->render_size.y = component->size.y.value;
 
+    // Mehhh
+    if (parent && component->size.x.type == SIZE_FLEX_GROW)
+        component->render_size.x = parent->render_size.x;
+    if (parent && component->size.y.type == SIZE_FLEX_GROW)
+        component->render_size.y = parent->render_size.y;
+
     global_position = vec2_add(global_position, component->render_position);
 
     if (
@@ -80,6 +86,13 @@ void ui_layout(
         || component->type == UI_HSTACK
     ) {
         ui_stack_layout(component, global_position);
+    } else if (component->type == UI_FRAME) {
+        UIFrame* frame = (UIFrame*)component;
+        // !!
+        component->render_size.x -= frame->margin_px * 2;
+        component->render_size.y -= frame->margin_px * 2;
+        component->render_position.x = frame->margin_px;
+        component->render_position.y = frame->margin_px;
     }
 
 
@@ -136,6 +149,15 @@ void ui_render(
                 (float)ui_font.baseSize,
                 2,
                 WHITE
+            );
+            break;
+        case UI_FRAME:
+            DrawRectangle(
+                component->render_position.x,
+                component->render_position.y,
+                component->render_size.x,
+                component->render_size.y,
+                ((UIFrame*)component)->color
             );
             break;
         default:
