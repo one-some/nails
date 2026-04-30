@@ -83,7 +83,7 @@ void viewport_on_key_down(KeyEvent* event) {
     switch (event->key) {
         case KEY_ONE:
             // yes these both suck
-            grid_power = fmax(grid_power - 1, -2);
+            grid_power = fmax(grid_power - 1, -4);
             break;
         case KEY_TWO:
             grid_power = fmin(grid_power + 1, 4);
@@ -424,7 +424,13 @@ int main() {
                     (Vector3) { size.x / 2.0f, size.y / 2.0f, size.z / 2.0f }
                 );
 
-                DrawCubeV(pos, size, WHITE);
+                DrawMesh(
+                    box->mesh,
+                    box->material,
+                    prim_get_transform(box)
+                );
+
+                //DrawCubeV(pos, size, WHITE);
                 DrawCubeWiresV(pos, size, (Color) { 0, 0, 0, 0xAA });
 
 

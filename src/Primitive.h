@@ -9,6 +9,8 @@ typedef enum {
 typedef struct {
     PrimitiveType type;
     BoundingBox bounds;
+    Mesh mesh;
+    Material material;
 } Primitive;
 
 typedef struct {
@@ -17,4 +19,6 @@ typedef struct {
 
 BoxPrimitive* make_box();
 RayCollision prim_ray_collide(Primitive* prim, Ray ray);
+void prim_recompute_mesh(Primitive* prim, bool new);
 void prim_resize(Primitive* prim, Vector3 normal, float magnitude);
+Matrix prim_get_transform(Primitive* prim);
