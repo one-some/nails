@@ -179,12 +179,12 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
 
 UIComponent* build_root() {
     UIComponent* root = ui_container(NULL, SIZE(PX(800), PX(500)));
-    UIComponent* primary = ui_stack(root, SIZE(GROW(1), GROW(1)), AXIS_Y);
+    UIComponent* primary = ui_stack(root, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
 
     UIComponent* top = ui_frame(primary, SIZE(GROW(1), PX(20)), RED, 0, 0);
-    UIComponent* label = ui_label(top, SIZE(GROW(1), GROW(1)), "nailzz! olympic girl drama");
+    UIComponent* label = ui_label(top, SIZE(GROW(1), GROW(1)), "nailzz! olympic girl drama", 24);
 
-    UIComponent* middle = ui_stack(primary, SIZE(GROW(1), GROW(1)), AXIS_X);
+    UIComponent* middle = ui_stack(primary, SIZE(GROW(1), GROW(1)), AXIS_X, 0);
 
 
     viewport = (UIViewport*) ui_viewport(middle, SIZE(GROW(1), GROW(1)));
@@ -207,16 +207,16 @@ UIComponent* build_root() {
         8
     );
 
-    UIComponent* mat_stack = ui_stack(material_frame, SIZE(GROW(1), GROW(1)), AXIS_Y);
-    UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library");
+    UIComponent* mat_stack = ui_stack(material_frame, SIZE(GROW(1), GROW(1)), AXIS_Y, 12);
+    UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library", 24);
     UIComponent* mat_grid = ui_grid(mat_stack, SIZE(GROW(1), GROW(1)), 8, 8);
 
     Texture2D tex = LoadTexture("awesome.png");
 
     for (int i=0;i<120;i++) {
-        //UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y);
-        ui_image(mat_grid, SIZE(GROW(1), GROW(1)), tex);
-        //ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), "First it Givith");
+        UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
+        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), tex);
+        ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), "First it Givith", 24);
     }
 
     return root;
@@ -234,7 +234,7 @@ int main() {
     SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
 
     UIComponent* ui_root = build_root();
-    ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
+    ui_layout(ui_root, NULL);
 
     box = (Primitive*)make_box();
 
@@ -332,7 +332,7 @@ int main() {
 
         ui_root->size.x.value = new_window_size.x;
         ui_root->size.y.value = new_window_size.y;
-        ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
+        ui_layout(ui_root, NULL);
 
         if (!vec2_eq(window_size, new_window_size)) {
             UnloadRenderTexture(viewport->render_texture);

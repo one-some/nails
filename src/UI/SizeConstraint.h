@@ -7,11 +7,13 @@
 #define SIZE(x, y) (Size) { x, y }
 #define PX(x) (SizeConstraint) { .type = SIZE_ABSOLUTE, .value = x }
 #define GROW(x) (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = x }
+#define OTHER() (SizeConstraint) { .type = SIZE_OTHER_AXIS, .value = 0 }
 
 
 typedef enum {
     SIZE_ABSOLUTE,
     SIZE_FLEX_GROW,
+    SIZE_OTHER_AXIS,
 } SizeType;
 
 typedef struct {

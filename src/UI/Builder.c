@@ -15,12 +15,13 @@ UIComponent* ui_container(UIComponent* parent, Size size) {
     return u;
 }
 
-UIComponent* ui_stack(UIComponent* parent, Size size, Axis axis) {
+UIComponent* ui_stack(UIComponent* parent, Size size, Axis axis, int32_t gap) {
     UIStack* u = malloc(sizeof *u);
     if (parent) v_add(&parent->children, u);
 
     u->base = ui_component(size, UI_STACK);
     u->axis = axis;
+    u->gap = gap;
 
     return (UIComponent*)u;
 }
@@ -34,12 +35,13 @@ UIComponent* ui_viewport(UIComponent* parent, Size size) {
     return (UIComponent*)u;
 }
 
-UIComponent* ui_label(UIComponent* parent, Size size, const char* text) {
+UIComponent* ui_label(UIComponent* parent, Size size, const char* text, int32_t font_size) {
     UILabel* u = malloc(sizeof *u);
     if (parent) v_add(&parent->children, u);
 
     u->base = ui_component(size, UI_LABEL);
     u->text = text;
+    u->font_size = font_size;
 
     return (UIComponent*)u;
 }

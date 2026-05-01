@@ -47,6 +47,7 @@ typedef struct {
 typedef struct {
     UIComponent base;
     Axis axis;
+    int32_t gap;
 } UIStack;
 
 typedef struct {
@@ -67,6 +68,7 @@ typedef struct {
 typedef struct {
     UIComponent base;
     const char* text;
+    int32_t font_size;
 } UILabel;
 
 typedef struct {
@@ -85,10 +87,10 @@ typedef struct {
 
 extern Font ui_font;
 
-void ui_layout(UIComponent* component, UIComponent* parent, Vec2 global_position);
+void ui_layout(UIComponent* component, UIComponent* parent);
 void ui_render(UIComponent* component, UIComponent* parent);
-void ui_stack_layout(UIStack* component, Vec2 global_position);
-void ui_grid_layout(UIGrid* grid, Vec2 global_position);
+void ui_stack_layout(UIStack* component);
+void ui_grid_layout(UIGrid* grid);
 
 int32_t* stack_vec_axis(Vec2* vec, Axis axis);
 SizeConstraint* stack_size_axis(Size* size, Axis axis);

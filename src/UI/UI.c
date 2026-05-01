@@ -1,6 +1,7 @@
 #include <assert.h>
-
 #include <stdio.h>
+#include <math.h>
+
 #include "UI/UI.h"
 
 Font ui_font;
@@ -13,7 +14,7 @@ inline SizeConstraint* stack_size_axis(Size* size, Axis axis) {
     return axis == AXIS_X ? &size->x : &size->y;
 }
 
-void ui_stack_layout(UIStack* stack, Vec2 global_position) {
+void ui_stack_layout(UIStack* stack) {
     Axis a_on = stack->axis;
     Axis a_off = stack->axis == AXIS_Y ? AXIS_X : AXIS_Y;
 
@@ -21,15 +22,18 @@ void ui_stack_layout(UIStack* stack, Vec2 global_position) {
     UIComponent* component = (UIComponent*)stack;
 
     int32_t play_room = *stack_vec_axis(&component->render_size, a_on);
+    int32_t size_off = *stack_vec_axis(&component->render_size, a_off);
 
-    int32_t position = *stack_vec_axis(&global_position, a_on);
-    int32_t global_pos_off = *stack_vec_axis(&global_position, a_off);
+    int32_t position = *stack_vec_axis(&component->render_position, a_on);
+    int32_t global_pos_off = *stack_vec_axis(&component->render_position, a_off);
 
     int32_t total_flex_pie = 0;
 
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
         SizeConstraint* size = stack_size_axis(&child->size, a_on);
+
+        play_room -= stack->gap;
 
         switch (size->type) {
             case SIZE_ABSOLUTE:
@@ -60,79 +64,89 @@ void ui_stack_layout(UIStack* stack, Vec2 global_position) {
             *size_on = (play_room / total_flex_pie) * size_constraint_on->value;
         }
 
-        position += *size_on;
+        position += *size_on + stack->gap;
     }
 }
 
-void ui_grid_layout(UIGrid* grid, Vec2 global_position) {
+void ui_grid_layout(UIGrid* grid) {
     UIComponent* component = (UIComponent*)grid;
-    int32_t side_length = (component->render_size.x / grid->columns) - grid->gap_px;
+
+    int32_t item_width = (component->render_size.x / grid->columns) - grid->gap_px;
+    int32_t item_height = item_width * 1.5;
+
+    // Keep it centered even if perfect sizing is impossible
+    int32_t offset = component->render_size.x - ((item_width + grid->gap_px) * grid->columns);
     
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
-        child->render_size = (Vec2) { side_length, side_length };
+        child->render_size = (Vec2) { item_width, item_height };
 
         Vec2 pos = {
-            (i % grid->columns) * (side_length + grid->gap_px),
-            (i / grid->columns) * (side_length + grid->gap_px)
+            offset + ((i % grid->columns) * (item_width + grid->gap_px)),
+            (i / grid->columns) * (item_height + grid->gap_px)
         };
-        child->render_position = global_position;//vec2_add(global_position, pos);
+
+        child->render_position = vec2_add(component->render_position, pos);
     }
 }
 
-void ui_layout(
-    UIComponent* component,
-    UIComponent* parent,
-    Vec2 global_position
-) {
+void ui_layout(UIComponent* component, UIComponent* parent) {
     assert(component);
-
-    for (int i=0; i<component->children.length; i++) {
-        // Stupid
-        UIComponent* child = component->children.data[i];
-        child->render_position = component->render_position;
-    }
 
     if (component->size.x.type == SIZE_ABSOLUTE)
         component->render_size.x = component->size.x.value;
     if (component->size.y.type == SIZE_ABSOLUTE)
         component->render_size.y = component->size.y.value;
 
+    if (component->size.x.type == SIZE_OTHER_AXIS)
+        component->render_size.x = component->render_size.y;
+    if (component->size.y.type == SIZE_OTHER_AXIS)
+        component->render_size.y = component->render_size.x;
+
     if (parent && parent->type != UI_STACK && parent->type != UI_GRID) {
+        Vec2 inner_size = parent->render_size;
+        if (parent->type == UI_FRAME) {
+            inner_size.x -= ((UIFrame*)parent)->padding_px * 2;
+            inner_size.y -= ((UIFrame*)parent)->padding_px * 2;
+        }
+
         if (component->size.x.type == SIZE_FLEX_GROW)
-            component->render_size.x = parent->render_size.x;
+            component->render_size.x = inner_size.x;
         if (component->size.y.type == SIZE_FLEX_GROW)
-            component->render_size.y = parent->render_size.y;
+            component->render_size.y = inner_size.y;
     }
 
-    //global_position = vec2_add(global_position, component->render_position);
-
     if (component->type == UI_STACK) {
-        ui_stack_layout((UIStack*)component, global_position);
+        ui_stack_layout((UIStack*)component);
     } else if (component->type == UI_GRID) {
-        ui_grid_layout((UIGrid*)component, global_position);
+        ui_grid_layout((UIGrid*)component);
     } else if (component->type == UI_FRAME) {
         UIFrame* frame = (UIFrame*)component;
-        component->render_size.x -= (frame->margin_px + frame->padding_px) * 2;
-        component->render_size.y -= (frame->margin_px + frame->padding_px) * 2;
+        component->render_size.x -= frame->margin_px * 2;
+        component->render_size.y -= frame->margin_px * 2;
 
         component->render_position.x += frame->margin_px;
         component->render_position.y += frame->margin_px;
 
-        global_position.x += frame->margin_px + frame->padding_px;
-        global_position.y += frame->margin_px + frame->padding_px;
+        for (int i=0; i<component->children.length; i++) {
+            UIComponent* child = component->children.data[i];
+            child->render_position.x = component->render_position.x + frame->padding_px;
+            child->render_position.y = component->render_position.y + frame->padding_px;
+        }
+    } else {
+        for (int i=0; i<component->children.length; i++) {
+            UIComponent* child = component->children.data[i];
+            child->render_position = component->render_position;
+        }
     }
 
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
-        ui_layout(child, component, global_position);
+        ui_layout(child, component);
     }
 }
 
-void ui_render(
-    UIComponent* component,
-    UIComponent* parent
-) {
+void ui_render(UIComponent* component, UIComponent* parent) {
     assert(component);
 
     // FIXME: NEED TO IMPLEMENT A STACK BECAUSE RAYLIB DOESNT SUPPORT NESTED SCISSOR CALLS
@@ -192,7 +206,7 @@ void ui_render(
                     component->render_position.x,
                     component->render_position.y,
                 },
-                (float)ui_font.baseSize,
+                ((UILabel*)component)->font_size,
                 2,
                 WHITE
             );
@@ -204,15 +218,6 @@ void ui_render(
                 component->render_size.x,
                 component->render_size.y,
                 ((UIFrame*)component)->color
-            );
-            break;
-        case UI_STACK:
-            DrawRectangle(
-                component->render_position.x,
-                component->render_position.y,
-                component->render_size.x,
-                component->render_size.y,
-                GREEN
             );
             break;
         default:
