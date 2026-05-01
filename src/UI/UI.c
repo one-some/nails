@@ -76,7 +76,7 @@ void ui_grid_layout(UIGrid* grid, Vec2 global_position) {
             (i % grid->columns) * (side_length + grid->gap_px),
             (i / grid->columns) * (side_length + grid->gap_px)
         };
-        child->render_position = vec2_add(global_position, pos);
+        child->render_position = global_position;//vec2_add(global_position, pos);
     }
 }
 
@@ -90,7 +90,7 @@ void ui_layout(
     for (int i=0; i<component->children.length; i++) {
         // Stupid
         UIComponent* child = component->children.data[i];
-        child->render_position = (Vec2) { 0, 0 };
+        child->render_position = component->render_position;
     }
 
     if (component->size.x.type == SIZE_ABSOLUTE)
@@ -105,8 +105,7 @@ void ui_layout(
             component->render_size.y = parent->render_size.y;
     }
 
-
-    global_position = vec2_add(global_position, component->render_position);
+    //global_position = vec2_add(global_position, component->render_position);
 
     if (component->type == UI_STACK) {
         ui_stack_layout((UIStack*)component, global_position);
@@ -205,6 +204,15 @@ void ui_render(
                 component->render_size.x,
                 component->render_size.y,
                 ((UIFrame*)component)->color
+            );
+            break;
+        case UI_STACK:
+            DrawRectangle(
+                component->render_position.x,
+                component->render_position.y,
+                component->render_size.x,
+                component->render_size.y,
+                GREEN
             );
             break;
         default:

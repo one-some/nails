@@ -201,21 +201,22 @@ UIComponent* build_root() {
     UIComponent* material_frame = ui_frame(
         root,
         SIZE(GROW(1), GROW(1)),
-        (Color) { 0x11, 0x11, 0x11, 0xF0 },
+        ORANGE,
+        //(Color) { 0x11, 0x11, 0x11, 0xF0 },
         24,
         8
     );
 
     UIComponent* mat_stack = ui_stack(material_frame, SIZE(GROW(1), GROW(1)), AXIS_Y);
     UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library");
-    UIComponent* mat_grid = ui_grid(mat_stack, SIZE(GROW(1), GROW(1)), 12, 8);
+    UIComponent* mat_grid = ui_grid(mat_stack, SIZE(GROW(1), GROW(1)), 8, 8);
 
     Texture2D tex = LoadTexture("awesome.png");
 
     for (int i=0;i<120;i++) {
-        UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y);
-        ui_image(a_mat_stack, SIZE(GROW(1), GROW(1)), tex);
-        ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), "First it Givith");
+        //UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y);
+        ui_image(mat_grid, SIZE(GROW(1), GROW(1)), tex);
+        //ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), "First it Givith");
     }
 
     return root;
