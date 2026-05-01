@@ -13,9 +13,12 @@ inline SizeConstraint* stack_size_axis(Size* size, Axis axis) {
     return axis == AXIS_X ? &size->x : &size->y;
 }
 
-void ui_stack_layout(UIComponent* component, Vec2 global_position) {
-    Axis a_on = component->type == UI_VSTACK ? AXIS_Y : AXIS_X;
-    Axis a_off = component->type == UI_VSTACK ? AXIS_X : AXIS_Y;
+void ui_stack_layout(UIStack* stack, Vec2 global_position) {
+    Axis a_on = stack->axis;
+    Axis a_off = stack->axis == AXIS_Y ? AXIS_X : AXIS_Y;
+
+    // IM SO Lazy! I ADMIT IT!
+    UIComponent* component = (UIComponent*)stack;
 
     int32_t play_room = *stack_vec_axis(&component->render_size, a_on);
 
@@ -61,6 +64,22 @@ void ui_stack_layout(UIComponent* component, Vec2 global_position) {
     }
 }
 
+void ui_grid_layout(UIGrid* grid, Vec2 global_position) {
+    UIComponent* component = (UIComponent*)grid;
+    int32_t side_length = (component->render_size.x / grid->columns) - grid->gap_px;
+    
+    for (int i=0; i<component->children.length; i++) {
+        UIComponent* child = component->children.data[i];
+        child->render_size = (Vec2) { side_length, side_length };
+
+        Vec2 pos = {
+            (i % grid->columns) * (side_length + grid->gap_px),
+            (i / grid->columns) * (side_length + grid->gap_px)
+        };
+        child->render_position = vec2_add(global_position, pos);
+    }
+}
+
 void ui_layout(
     UIComponent* component,
     UIComponent* parent,
@@ -68,33 +87,42 @@ void ui_layout(
 ) {
     assert(component);
 
+    for (int i=0; i<component->children.length; i++) {
+        // Stupid
+        UIComponent* child = component->children.data[i];
+        child->render_position = (Vec2) { 0, 0 };
+    }
+
     if (component->size.x.type == SIZE_ABSOLUTE)
         component->render_size.x = component->size.x.value;
     if (component->size.y.type == SIZE_ABSOLUTE)
         component->render_size.y = component->size.y.value;
 
-    // Mehhh
-    if (parent && component->size.x.type == SIZE_FLEX_GROW)
-        component->render_size.x = parent->render_size.x;
-    if (parent && component->size.y.type == SIZE_FLEX_GROW)
-        component->render_size.y = parent->render_size.y;
+    if (parent && parent->type != UI_STACK && parent->type != UI_GRID) {
+        if (component->size.x.type == SIZE_FLEX_GROW)
+            component->render_size.x = parent->render_size.x;
+        if (component->size.y.type == SIZE_FLEX_GROW)
+            component->render_size.y = parent->render_size.y;
+    }
+
 
     global_position = vec2_add(global_position, component->render_position);
 
-    if (
-        component->type == UI_VSTACK
-        || component->type == UI_HSTACK
-    ) {
-        ui_stack_layout(component, global_position);
+    if (component->type == UI_STACK) {
+        ui_stack_layout((UIStack*)component, global_position);
+    } else if (component->type == UI_GRID) {
+        ui_grid_layout((UIGrid*)component, global_position);
     } else if (component->type == UI_FRAME) {
         UIFrame* frame = (UIFrame*)component;
-        // !!
-        component->render_size.x -= frame->margin_px * 2;
-        component->render_size.y -= frame->margin_px * 2;
-        component->render_position.x = frame->margin_px;
-        component->render_position.y = frame->margin_px;
-    }
+        component->render_size.x -= (frame->margin_px + frame->padding_px) * 2;
+        component->render_size.y -= (frame->margin_px + frame->padding_px) * 2;
 
+        component->render_position.x += frame->margin_px;
+        component->render_position.y += frame->margin_px;
+
+        global_position.x += frame->margin_px + frame->padding_px;
+        global_position.y += frame->margin_px + frame->padding_px;
+    }
 
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
@@ -108,14 +136,33 @@ void ui_render(
 ) {
     assert(component);
 
+    // FIXME: NEED TO IMPLEMENT A STACK BECAUSE RAYLIB DOESNT SUPPORT NESTED SCISSOR CALLS
+    BeginScissorMode(
+        component->render_position.x,
+        component->render_position.y,
+        component->render_size.x,
+        component->render_size.y
+    );
+
     switch (component->type) {
-        case UI_COLOR_RECT:
-            DrawRectangle(
-                component->render_position.x,
-                component->render_position.y,
-                component->render_size.x,
-                component->render_size.y,
-                ((UIColorRect*)component)->color
+        case UI_IMAGE:
+            DrawTexturePro(
+                ((UIImage*)component)->texture,
+                (Rectangle) {
+                    0,
+                    0,
+                    (float)(((UIImage*)component)->texture.width),
+                    (float)(((UIImage*)component)->texture.height),
+                },
+                (Rectangle) {
+                    component->render_position.x,
+                    component->render_position.y,
+                    component->render_size.x,
+                    component->render_size.y,
+                },
+                (Vector2) { 0, 0 },
+                0.0f,
+                WHITE
             );
             break;
         case UI_VIEWPORT:
@@ -168,6 +215,8 @@ void ui_render(
         UIComponent* child = component->children.data[i];
         ui_render(child, component);
     }
+
+    EndScissorMode();
 }
 
 

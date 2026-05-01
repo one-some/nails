@@ -3,7 +3,7 @@
 
 #include "Math.h"
 #include "Primitive.h"
-#include "UI/UI.h"
+#include "UI/Builder.h"
 #include "UI/Event.h"
 
 typedef struct {
@@ -178,135 +178,62 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
 }
 
 UIComponent* build_root() {
-    UIComponent* ui_root = malloc(sizeof *ui_root);
-    *ui_root = (UIComponent) {
-        .type = UI_CONTAINER,
-        .size = size_absolute(800, 500)
-    };
+    UIComponent* root = ui_container(NULL, SIZE(PX(800), PX(500)));
+    UIComponent* primary = ui_stack(root, SIZE(GROW(1), GROW(1)), AXIS_Y);
 
-    UIVStack* primary = malloc(sizeof *primary);
-    *primary = (UIVStack) {
-        .base = (UIComponent) {
-            .type = UI_VSTACK,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-            }
-        }
-    };
-    v_add(&ui_root->children, primary);
+    UIComponent* top = ui_frame(primary, SIZE(GROW(1), PX(20)), RED, 0, 0);
+    UIComponent* label = ui_label(top, SIZE(GROW(1), GROW(1)), "nailzz! olympic girl drama");
 
-    UIFrame* material_picker = malloc(sizeof *material_picker);
-    *material_picker = (UIFrame) {
-        .base = (UIComponent) {
-            .type = UI_FRAME,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-            }
-        },
-        .color = (Color) { 0x11, 0x11, 0x11, 0xF0 },
-        .margin_px = 12
-    };
-    v_add(&ui_root->children, material_picker);
+    UIComponent* middle = ui_stack(primary, SIZE(GROW(1), GROW(1)), AXIS_X);
 
-    UIColorRect* top = malloc(sizeof(UIColorRect));
-    *top = (UIColorRect) {
-        .base = (UIComponent) {
-            .type = UI_COLOR_RECT,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_ABSOLUTE,  .value = 20 }
-            }
-        },
-        .color = RED
-    };
-    v_add(&primary->base.children, top);
 
-    UILabel* label = malloc(sizeof(UILabel));
-    *label = (UILabel) {
-        .base = (UIComponent) {
-            .type = UI_LABEL,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-            }
-        },
-        .text = "nailzz! olympic girl drama",
-    };
-    v_add(&top->base.children, label);
-
-    UIHStack* middle = malloc(sizeof(UIHStack));
-    *middle = (UIHStack) {
-        .base = (UIComponent) {
-            .type = UI_HSTACK,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-            }
-        },
-    };
-    v_add(&primary->base.children, middle);
-
-    viewport = malloc(sizeof(UIViewport));
-    *viewport = (UIViewport) {
-        .base = (UIComponent) {
-            .type = UI_VIEWPORT,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-            }
-        },
-    };
-    v_add(&middle->base.children, viewport);
+    viewport = (UIViewport*) ui_viewport(middle, SIZE(GROW(1), GROW(1)));
     viewport->base.event_handlers.on_tick = &viewport_on_tick;
     viewport->base.event_handlers.on_mouse_down = &viewport_on_mouse_down;
     viewport->base.event_handlers.on_mouse_up = &viewport_on_mouse_up;
     viewport->base.event_handlers.on_mouse_move = &viewport_on_mouse_move;
     viewport->base.event_handlers.on_key_down = &viewport_on_key_down;
 
-    UIColorRect* right = malloc(sizeof(UIColorRect));
-    *right = (UIColorRect) {
-        .base = (UIComponent) {
-            .type = UI_COLOR_RECT,
-            .size = (Size) {
-                .x = (SizeConstraint) { .type = SIZE_ABSOLUTE,  .value = 300 },
-                .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-            }
-        },
-        .color = GREEN
-    };
-    v_add(&middle->base.children, right);
+    UIComponent* right = ui_frame(middle, SIZE(PX(300), GROW(1)), (Color) {0, 0, 0, 200}, 0, 0);
+    UIComponent* bottom = ui_frame(primary, SIZE(GROW(1), PX(20)), BLUE, 0, 0);
 
-    //UILabel* ll = malloc(sizeof(UILabel));
-    //*ll = (UILabel) {
-    //    .base = (UIComponent) {
-    //        .type = UI_LABEL,
-    //        .size = (Size) {
-    //            .x = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 },
-    //            .y = (SizeConstraint) { .type = SIZE_FLEX_GROW, .value = 1 }
-    //        }
-    //    },
-    //    .text = "This old town is filled with sin\nIt'll swallow you in",
-    //};
-    //v_add(&right->base.children, ll);
+    /* Material Picker <3 */
+    UIComponent* material_frame = ui_frame(
+        root,
+        SIZE(GROW(1), GROW(1)),
+        (Color) { 0x11, 0x11, 0x11, 0xF0 },
+        24,
+        8
+    );
 
-    return (UIComponent*)ui_root;
+    UIComponent* mat_stack = ui_stack(material_frame, SIZE(GROW(1), GROW(1)), AXIS_Y);
+    UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library");
+    UIComponent* mat_grid = ui_grid(mat_stack, SIZE(GROW(1), GROW(1)), 12, 8);
+
+    Texture2D tex = LoadTexture("awesome.png");
+
+    for (int i=0;i<120;i++) {
+        UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y);
+        ui_image(a_mat_stack, SIZE(GROW(1), GROW(1)), tex);
+        ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), "First it Givith");
+    }
+
+    return root;
 }
 
 int main() {
-    UIComponent* ui_root = build_root();
-    ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
-
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(
-        ui_root->size.x.value,
-        ui_root->size.y.value,
+        800,
+        500,
         "nailzz"
     );
     ui_font = LoadFontEx("ibm.ttf", 24, NULL, 0);
     SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
+
+    UIComponent* ui_root = build_root();
+    ui_layout(ui_root, NULL, (Vec2) { 0, 0 });
 
     box = (Primitive*)make_box();
 

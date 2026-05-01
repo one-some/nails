@@ -7,12 +7,18 @@
 #include "UI/SizeConstraint.h"
 
 typedef enum {
+    AXIS_X,
+    AXIS_Y
+} Axis;
+
+typedef enum {
     UI_CONTAINER,
     UI_STACK,
-    UI_COLOR_RECT,
     UI_VIEWPORT,
     UI_LABEL,
     UI_FRAME,
+    UI_GRID,
+    UI_IMAGE,
 } UIType;
 
 typedef struct {
@@ -30,9 +36,10 @@ typedef struct {
 typedef struct {
     UIType type;
     Size size;
+    Vec children;
+
     Vec2 render_size;
     Vec2 render_position;
-    Vec children;
 
     EventHandlers event_handlers;
 } UIComponent;
@@ -54,6 +61,11 @@ typedef struct {
 
 typedef struct {
     UIComponent base;
+    Texture2D texture;
+} UIImage;
+
+typedef struct {
+    UIComponent base;
     const char* text;
 } UILabel;
 
@@ -61,19 +73,22 @@ typedef struct {
     UIComponent base;
     Color color;
     int32_t margin_px;
+    int32_t padding_px;
 } UIFrame;
 
+typedef struct {
+    UIComponent base;
+    int32_t columns;
+    int32_t gap_px;
+} UIGrid;
 
-typedef enum {
-    AXIS_X,
-    AXIS_Y
-} Axis;
 
 extern Font ui_font;
 
 void ui_layout(UIComponent* component, UIComponent* parent, Vec2 global_position);
 void ui_render(UIComponent* component, UIComponent* parent);
-void ui_stack_layout(UIComponent* component, Vec2 global_position);
+void ui_stack_layout(UIStack* component, Vec2 global_position);
+void ui_grid_layout(UIGrid* grid, Vec2 global_position);
 
 int32_t* stack_vec_axis(Vec2* vec, Axis axis);
 SizeConstraint* stack_size_axis(Size* size, Axis axis);

@@ -4,7 +4,10 @@
 UIComponent ui_base_component(Size size);
 
 UIComponent* ui_container(UIComponent* parent, Size size);
-UIStack* ui_stack(UIComponent* parent, Size size, Axis axis);
-UIColorRect* ui_color_rect(UIComponent* parent, Size size, Color color);
-UILabel* ui_label(UIComponent* parent, Size size, const char* text);
-UIFrame* ui_frame(UIComponent* parent, Size size, Color color, int32_t margin_px);
+UIComponent* ui_stack(UIComponent* parent, Size size, Axis axis);
+UIComponent* ui_color_rect(UIComponent* parent, Size size, Color color);
+UIComponent* ui_viewport(UIComponent* parent, Size size);
+UIComponent* ui_label(UIComponent* parent, Size size, const char* text);
+UIComponent* ui_frame(UIComponent* parent, Size size, Color color, int32_t margin_px, int32_t padding_px);
+UIComponent* ui_grid(UIComponent* parent, Size size, int32_t columns, int32_t gap_px);
+UIComponent* ui_image(UIComponent* parent, Size size, Texture2D texture);
