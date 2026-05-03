@@ -159,24 +159,34 @@ void ui_render(UIComponent* component, UIComponent* parent) {
 
     switch (component->type) {
         case UI_IMAGE:
-            DrawTexturePro(
-                ((UIImage*)component)->texture,
-                (Rectangle) {
-                    0,
-                    0,
-                    (float)(((UIImage*)component)->texture.width),
-                    (float)(((UIImage*)component)->texture.height),
-                },
-                (Rectangle) {
+            if (((UIImage*)component)->texture.loaded) {
+                DrawTexturePro(
+                    ((UIImage*)component)->texture.texture,
+                    (Rectangle) {
+                        0,
+                        0,
+                        (float)(((UIImage*)component)->texture.texture.width),
+                        (float)(((UIImage*)component)->texture.texture.height),
+                    },
+                    (Rectangle) {
+                        component->render_position.x,
+                        component->render_position.y,
+                        component->render_size.x,
+                        component->render_size.y,
+                    },
+                    (Vector2) { 0, 0 },
+                    0.0f,
+                    WHITE
+                );
+            } else {
+                DrawRectangle(
                     component->render_position.x,
                     component->render_position.y,
                     component->render_size.x,
                     component->render_size.y,
-                },
-                (Vector2) { 0, 0 },
-                0.0f,
-                WHITE
-            );
+                    MAGENTA
+                );
+            }
             break;
         case UI_VIEWPORT:
             DrawTexturePro(

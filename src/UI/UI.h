@@ -2,9 +2,10 @@
 
 #include "raylib.h"
 
-#include "UI/Vec.h"
+#include "Vec.h"
 #include "UI/Event.h"
 #include "UI/SizeConstraint.h"
+#include "UI/LazyTexture.h"
 
 typedef enum {
     AXIS_X,
@@ -62,7 +63,7 @@ typedef struct {
 
 typedef struct {
     UIComponent base;
-    Texture2D texture;
+    LazyTexture texture;
 } UIImage;
 
 typedef struct {

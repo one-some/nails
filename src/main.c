@@ -5,6 +5,7 @@
 #include "Primitive.h"
 #include "UI/Builder.h"
 #include "UI/Event.h"
+#include "MaterialPicker.h"
 
 typedef struct {
     Camera camera;
@@ -177,7 +178,7 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
     }
 }
 
-UIComponent* build_root() {
+UIComponent* build_root(Vec* materials) {
     UIComponent* root = ui_container(NULL, SIZE(PX(800), PX(500)));
     UIComponent* primary = ui_stack(root, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
 
@@ -211,12 +212,12 @@ UIComponent* build_root() {
     UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library", 24);
     UIComponent* mat_grid = ui_grid(mat_stack, SIZE(GROW(1), GROW(1)), 8, 8);
 
-    Texture2D tex = LoadTexture("awesome.png");
+    for (int i=0; i<materials->length; i++) {
+        Matthewterial* mat = materials->data[i];
 
-    for (int i=0;i<120;i++) {
         UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
-        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), tex);
-        ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), "First it Givith", 24);
+        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), mat->color);
+        ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), mat->name, 24);
     }
 
     return root;
@@ -233,7 +234,11 @@ int main() {
     ui_font = LoadFontEx("ibm.ttf", 24, NULL, 0);
     SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
 
-    UIComponent* ui_root = build_root();
+    Vec materials = { 0 };
+    materials_populate_from_disk(&materials, "textures");
+    materials_lazy_load(&materials);
+
+    UIComponent* ui_root = build_root(&materials);
     ui_layout(ui_root, NULL);
 
     box = (Primitive*)make_box();

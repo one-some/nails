@@ -40,7 +40,9 @@ UIComponent* ui_label(UIComponent* parent, Size size, const char* text, int32_t 
     if (parent) v_add(&parent->children, u);
 
     u->base = ui_component(size, UI_LABEL);
-    u->text = text;
+    u->text = malloc(strlen(text) + 1);
+    strcpy(u->text, text);
+
     u->font_size = font_size;
 
     return (UIComponent*)u;
@@ -69,7 +71,7 @@ UIComponent* ui_grid(UIComponent* parent, Size size, int32_t columns, int32_t ga
     return (UIComponent*)u;
 }
 
-UIComponent* ui_image(UIComponent* parent, Size size, Texture2D texture) {
+UIComponent* ui_image(UIComponent* parent, Size size, LazyTexture texture) {
     UIImage* u = malloc(sizeof *u);
     if (parent) v_add(&parent->children, u);
 
