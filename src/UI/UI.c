@@ -159,14 +159,14 @@ void ui_render(UIComponent* component, UIComponent* parent) {
 
     switch (component->type) {
         case UI_IMAGE:
-            if (((UIImage*)component)->texture.loaded) {
+            if (((UIImage*)component)->texture->load_phase == LOAD_PHASE_LOADED) {
                 DrawTexturePro(
-                    ((UIImage*)component)->texture.texture,
+                    ((UIImage*)component)->texture->texture,
                     (Rectangle) {
                         0,
                         0,
-                        (float)(((UIImage*)component)->texture.texture.width),
-                        (float)(((UIImage*)component)->texture.texture.height),
+                        (float)(((UIImage*)component)->texture->texture.width),
+                        (float)(((UIImage*)component)->texture->texture.height),
                     },
                     (Rectangle) {
                         component->render_position.x,

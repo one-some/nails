@@ -63,7 +63,7 @@ typedef struct {
 
 typedef struct {
     UIComponent base;
-    LazyTexture texture;
+    LazyTexture* texture;
 } UIImage;
 
 typedef struct {

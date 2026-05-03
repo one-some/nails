@@ -109,17 +109,28 @@ void materials_populate_from_disk(Vec* materials, const char* directory) {
     closedir(texture_dir);
 }
 
-void materials_lazy_load(Vec* materials) {
-    if (fork()) return;
+void* materials_lazy_load_thread(void* arg) {
+    Vec* materials = arg;
 
     while (true) {
         for (int i=0; i<materials->length; i++) {
             Matthewterial* mat = materials->data[i];
-            if (!mat->color.loaded) {
-                mat->color.texture = LoadTexture(mat->color.path);
-                mat->color.loaded = true;
+            if (mat->color.load_phase == LOAD_PHASE_UNLOADED) {
+                mat->color.img = LoadImage(mat->color.path);
+                mat->color.load_phase = LOAD_PHASE_IMAGE;
             }
         }
         sleep(1);
+    }
+}
+
+void materials_lazy_load_online(Vec* materials) {
+    for (int i=0; i<materials->length; i++) {
+        Matthewterial* mat = materials->data[i];
+        if (mat->color.load_phase == LOAD_PHASE_IMAGE) {
+            mat->color.texture = LoadTextureFromImage(mat->color.img);
+            UnloadImage(mat->color.img);
+            mat->color.load_phase = LOAD_PHASE_LOADED;
+        }
     }
 }

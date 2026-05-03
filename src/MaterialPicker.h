@@ -11,4 +11,5 @@ typedef struct {
 } Matthewterial;
 
 void materials_populate_from_disk(Vec* materials, const char* directory);
-void materials_lazy_load(Vec* materials);
+void* materials_lazy_load_thread(void* arg);
+void materials_lazy_load_online(Vec* materials);

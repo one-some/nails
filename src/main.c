@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
+#include <pthread.h>
 
 #include "Math.h"
 #include "Primitive.h"
@@ -202,8 +203,7 @@ UIComponent* build_root(Vec* materials) {
     UIComponent* material_frame = ui_frame(
         root,
         SIZE(GROW(1), GROW(1)),
-        ORANGE,
-        //(Color) { 0x11, 0x11, 0x11, 0xF0 },
+        (Color) { 0x11, 0x11, 0x11, 0xF0 },
         24,
         8
     );
@@ -216,7 +216,7 @@ UIComponent* build_root(Vec* materials) {
         Matthewterial* mat = materials->data[i];
 
         UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
-        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), mat->color);
+        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), &mat->color);
         ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), mat->name, 24);
     }
 
@@ -236,10 +236,13 @@ int main() {
 
     Vec materials = { 0 };
     materials_populate_from_disk(&materials, "textures");
-    materials_lazy_load(&materials);
 
     UIComponent* ui_root = build_root(&materials);
     ui_layout(ui_root, NULL);
+
+    pthread_t thread;
+    pthread_create(&thread, NULL, materials_lazy_load_thread, &materials);
+    pthread_detach(thread);
 
     box = (Primitive*)make_box();
 
@@ -406,6 +409,8 @@ int main() {
             ClearBackground(RAYWHITE);
             ui_render(ui_root, NULL);
         EndDrawing();
+
+        materials_lazy_load_online(&materials);
     }
 
     UnloadFont(ui_font);

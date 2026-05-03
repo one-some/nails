@@ -71,7 +71,7 @@ UIComponent* ui_grid(UIComponent* parent, Size size, int32_t columns, int32_t ga
     return (UIComponent*)u;
 }
 
-UIComponent* ui_image(UIComponent* parent, Size size, LazyTexture texture) {
+UIComponent* ui_image(UIComponent* parent, Size size, LazyTexture* texture) {
     UIImage* u = malloc(sizeof *u);
     if (parent) v_add(&parent->children, u);
 
