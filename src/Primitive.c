@@ -16,7 +16,7 @@ BoxPrimitive* make_box() {
     };
     b->base.material = LoadMaterialDefault();
 
-    b->base.material.maps[0].color = GREEN;
+    b->base.material.maps[0].color = WHITE;
 
     prim_recompute_mesh(&b->base, true);
 

@@ -2,6 +2,7 @@
 
 #include "raylib.h"
 
+#include "UI/Axis.h"
 #include "UI/Vec2.h"
 
 typedef enum {
@@ -9,17 +10,17 @@ typedef enum {
     EVENT_MOUSE_DOWN,
     EVENT_MOUSE_UP,
     EVENT_MOUSE_MOVE,
+    EVENT_MOUSE_WHEEL,
     EVENT_KEY_DOWN,
     EVENT_KEY_UP,
 } EventType;
 
-typedef struct {
-    EventType type;
-} Event;
+typedef struct UIComponent UIComponent;
 
 typedef struct {
-    Event base;
-} TickEvent;
+    EventType type;
+    UIComponent* target;
+} Event;
 
 typedef struct {
     Event base;
@@ -36,3 +37,9 @@ typedef struct {
     Event base;
     KeyboardKey key;
 } KeyEvent;
+
+typedef struct {
+    Event base;
+    float delta;
+    Axis axis;
+} MouseWheelEvent;

@@ -3,14 +3,10 @@
 #include "raylib.h"
 
 #include "Vec.h"
+#include "UI/Axis.h"
 #include "UI/Event.h"
 #include "UI/SizeConstraint.h"
 #include "UI/LazyTexture.h"
-
-typedef enum {
-    AXIS_X,
-    AXIS_Y
-} Axis;
 
 typedef enum {
     UI_CONTAINER,
@@ -23,24 +19,28 @@ typedef enum {
 } UIType;
 
 typedef struct {
-    void (*on_tick)(TickEvent* event);
+    void (*on_tick)(Event* event);
 
     void (*on_mouse_down)(MouseButtonEvent* event);
     void (*on_mouse_up)(MouseButtonEvent* event);
-
     void (*on_mouse_move)(MouseMoveEvent* event);
+    void (*on_mouse_wheel)(MouseWheelEvent* event);
 
     void (*on_key_up)(KeyEvent* event);
     void (*on_key_down)(KeyEvent* event);
 } EventHandlers;
 
-typedef struct {
+typedef struct UIComponent {
     UIType type;
     Size size;
     Vec children;
+    bool visible;
+    bool hovered;
+    void* data;
 
     Vec2 render_size;
     Vec2 render_position;
+    Vec2 scroll_offset;
 
     EventHandlers event_handlers;
 } UIComponent;
@@ -77,6 +77,7 @@ typedef struct {
     Color color;
     int32_t margin_px;
     int32_t padding_px;
+    bool allow_scrolling;
 } UIFrame;
 
 typedef struct {
@@ -85,6 +86,9 @@ typedef struct {
     int32_t gap_px;
 } UIGrid;
 
+typedef struct {
+    UIComponent base;
+} UIButton;
 
 extern Font ui_font;
 
@@ -92,8 +96,10 @@ void ui_layout(UIComponent* component, UIComponent* parent);
 void ui_render(UIComponent* component, UIComponent* parent);
 void ui_stack_layout(UIStack* component);
 void ui_grid_layout(UIGrid* grid);
+bool ui_does_component_scissor(UIComponent* component);
 
 int32_t* stack_vec_axis(Vec2* vec, Axis axis);
 SizeConstraint* stack_size_axis(Size* size, Axis axis);
 
-void ui_propagate_event(UIComponent* component, Event* event);
+void ui_propagate_event(UIComponent* component, Event* event, Vec2 mouse_pos);
+void ui_frame_on_wheel(MouseWheelEvent* event);

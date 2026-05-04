@@ -3,7 +3,8 @@
 UIComponent ui_component(Size size, UIType type) {
     return (UIComponent) {
         .type = type,
-        .size = size
+        .size = size,
+        .visible = true,
     };
 }
 
@@ -56,6 +57,8 @@ UIComponent* ui_frame(UIComponent* parent, Size size, Color color, int32_t margi
     u->color = color;
     u->margin_px = margin_px;
     u->padding_px = padding_px;
+
+    u->base.event_handlers.on_mouse_wheel = &ui_frame_on_wheel;
 
     return (UIComponent*)u;
 }

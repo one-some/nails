@@ -92,6 +92,14 @@ void ui_grid_layout(UIGrid* grid) {
 
 void ui_layout(UIComponent* component, UIComponent* parent) {
     assert(component);
+    if (!component->visible) return;
+
+    if (parent) {
+        component->render_position = vec2_add(
+            component->render_position,
+            parent->scroll_offset
+        );
+    }
 
     if (component->size.x.type == SIZE_ABSOLUTE)
         component->render_size.x = component->size.x.value;
@@ -146,16 +154,41 @@ void ui_layout(UIComponent* component, UIComponent* parent) {
     }
 }
 
+bool ui_does_component_scissor(UIComponent* component) {
+    switch (component->type) {
+        case UI_GRID:
+        case UI_STACK:
+            return false;
+        default:
+            return true;
+    }
+}
+
 void ui_render(UIComponent* component, UIComponent* parent) {
     assert(component);
+    if (!component->visible) return;
 
-    // FIXME: NEED TO IMPLEMENT A STACK BECAUSE RAYLIB DOESNT SUPPORT NESTED SCISSOR CALLS
-    BeginScissorMode(
-        component->render_position.x,
-        component->render_position.y,
-        component->render_size.x,
-        component->render_size.y
-    );
+    static Rectangle scissor_stack[32];
+    static int scissor_index = -1;
+
+    bool scissoring = ui_does_component_scissor(component);
+    if (scissoring) {
+        scissor_index++;
+
+        scissor_stack[scissor_index] = (Rectangle) {
+            component->render_position.x,
+            component->render_position.y,
+            component->render_size.x,
+            component->render_size.y
+        };
+    }
+
+    Rectangle rect = scissor_stack[0];
+    for (int i=0; i<=scissor_index; i++) {
+        rect = GetCollisionRec(rect, scissor_stack[i]);
+    }
+    BeginScissorMode(rect.x, rect.y, rect.width, rect.height);
+
 
     switch (component->type) {
         case UI_IMAGE:
@@ -240,20 +273,27 @@ void ui_render(UIComponent* component, UIComponent* parent) {
     }
 
     EndScissorMode();
+    if (scissoring)
+        scissor_index--;
 }
 
 
-void ui_propagate_event(UIComponent* component, Event* event) {
+void ui_propagate_event(UIComponent* component, Event* event, Vec2 mouse_pos) {
     assert(component);
     assert(event);
+
+    if (!component->visible) return;
+    event->target = component;
+
+    component->hovered = vec2_in_rec(mouse_pos, component->render_position, component->render_size);
 
     switch (event->type) {
         case EVENT_TICK:
             if (component->event_handlers.on_tick)
-                component->event_handlers.on_tick((TickEvent*)event);
+                component->event_handlers.on_tick((Event*)event);
             break;
         case EVENT_MOUSE_DOWN:
-            if (component->event_handlers.on_mouse_down)
+            if (component->hovered && component->event_handlers.on_mouse_down)
                 component->event_handlers.on_mouse_down((MouseButtonEvent*)event);
             break;
         case EVENT_MOUSE_UP:
@@ -263,6 +303,10 @@ void ui_propagate_event(UIComponent* component, Event* event) {
         case EVENT_MOUSE_MOVE:
             if (component->event_handlers.on_mouse_move)
                 component->event_handlers.on_mouse_move((MouseMoveEvent*)event);
+            break;
+        case EVENT_MOUSE_WHEEL:
+            if (component->event_handlers.on_mouse_wheel)
+                component->event_handlers.on_mouse_wheel((MouseWheelEvent*)event);
             break;
         case EVENT_KEY_DOWN:
             if (component->event_handlers.on_key_down)
@@ -276,6 +320,20 @@ void ui_propagate_event(UIComponent* component, Event* event) {
 
     for (int i=0; i<component->children.length; i++) {
         UIComponent* child = component->children.data[i];
-        ui_propagate_event(child, event);
+        ui_propagate_event(child, event, mouse_pos);
    }
+}
+
+void ui_frame_on_wheel(MouseWheelEvent* event) {
+    if (event->axis == AXIS_X) return;
+
+    if (event->base.target->type != UI_FRAME) return;
+    UIFrame* frame = (UIFrame*)event->base.target;
+
+    if (!frame->allow_scrolling) return;
+
+    frame->base.scroll_offset.y = fmin(
+        0,
+        frame->base.scroll_offset.y + (80 * event->delta)
+    );
 }

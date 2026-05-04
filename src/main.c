@@ -23,6 +23,7 @@ typedef struct {
 } PullTarget;
 
 static UIViewport* viewport;
+static UIComponent* material_frame;
 static ViewportCamera camera = { 0 };
 static PullTarget pull_target = { 0 };
 static bool rotating_camera = false;
@@ -30,7 +31,7 @@ static Primitive* box;
 
 static int grid_power = 0;
 
-void viewport_on_tick(TickEvent* event) {
+void viewport_on_tick(Event* event) {
     const float speed = 0.2;
 
     Vector3 forward = (Vector3) {
@@ -89,6 +90,9 @@ void viewport_on_key_down(KeyEvent* event) {
             break;
         case KEY_TWO:
             grid_power = fmin(grid_power + 1, 4);
+            break;
+        case KEY_M:
+            material_frame->visible = !material_frame->visible;
             break;
         default:
             break;
@@ -179,6 +183,15 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
     }
 }
 
+
+void mat_button_down(MouseButtonEvent* event) {
+    material_frame->visible = false;
+    Matthewterial* mat = (Matthewterial*)event->base.target->data;
+
+    printf("Hello \n");
+    box->material.maps[0].texture = mat->color.texture;
+}
+
 UIComponent* build_root(Vec* materials) {
     UIComponent* root = ui_container(NULL, SIZE(PX(800), PX(500)));
     UIComponent* primary = ui_stack(root, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
@@ -200,7 +213,7 @@ UIComponent* build_root(Vec* materials) {
     UIComponent* bottom = ui_frame(primary, SIZE(GROW(1), PX(20)), BLUE, 0, 0);
 
     /* Material Picker <3 */
-    UIComponent* material_frame = ui_frame(
+    material_frame = ui_frame(
         root,
         SIZE(GROW(1), GROW(1)),
         (Color) { 0x11, 0x11, 0x11, 0xF0 },
@@ -210,7 +223,16 @@ UIComponent* build_root(Vec* materials) {
 
     UIComponent* mat_stack = ui_stack(material_frame, SIZE(GROW(1), GROW(1)), AXIS_Y, 12);
     UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library", 24);
-    UIComponent* mat_grid = ui_grid(mat_stack, SIZE(GROW(1), GROW(1)), 8, 8);
+
+    UIComponent* mat_grid_container = ui_frame(
+        mat_stack,
+        SIZE(GROW(1), GROW(1)),
+        BLANK,
+        0,
+        0
+    );
+    ((UIFrame*)mat_grid_container)->allow_scrolling = true;
+    UIComponent* mat_grid = ui_grid(mat_grid_container, SIZE(GROW(1), GROW(1)), 8, 8);
 
     for (int i=0; i<materials->length; i++) {
         Matthewterial* mat = materials->data[i];
@@ -218,9 +240,108 @@ UIComponent* build_root(Vec* materials) {
         UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
         ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), &mat->color);
         ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), mat->name, 24);
+
+        a_mat_stack->data = mat;
+        a_mat_stack->event_handlers.on_mouse_down = &mat_button_down;
     }
 
     return root;
+}
+
+void do_events(UIComponent* root) {
+    static uint32_t mouse_buttons_down = 0;
+    static Vec2 mouse_position = { 0 };
+    // This suks
+    static bool keys_down[512] = { 0 };
+
+    // Mouse move
+    Vec2 mouse_pos = {
+        .x = GetMouseX(),
+        .y = GetMouseY()
+    };
+
+    Event tick_event = (Event) { .type = EVENT_TICK };
+    ui_propagate_event(root, (Event*)&tick_event, mouse_pos);
+
+    // Mouse buttons
+    uint32_t new_mouse_buttons_down = 0;
+    for (int i=0; i<=MOUSE_BUTTON_BACK; i++) {
+        uint32_t mask = 1 << i;
+        bool was_down = (mouse_buttons_down & mask) != 0;
+
+        if (IsMouseButtonDown(i)) {
+            new_mouse_buttons_down |= mask;
+
+            if (!was_down) {
+                MouseButtonEvent event = (MouseButtonEvent) {
+                    .base = (Event) { .type = EVENT_MOUSE_DOWN },
+                    .button = i
+                };
+                ui_propagate_event(root, (Event*)&event, mouse_pos);
+            }
+        } else if (was_down) {
+            // MOUSE UP
+            MouseButtonEvent event = (MouseButtonEvent) {
+                .base = (Event) { .type = EVENT_MOUSE_UP },
+                .button = i
+            };
+            ui_propagate_event(root, (Event*)&event, mouse_pos);
+        }
+    }
+    mouse_buttons_down = new_mouse_buttons_down;
+
+    // Keys
+    for (int i=0; i<512; i++) {
+        bool pressed_now = IsKeyDown(i);
+        bool pressed_then = keys_down[i];
+
+        if (pressed_now == pressed_then)
+            continue;
+
+        keys_down[i] = pressed_now;
+
+        KeyEvent event = (KeyEvent) {
+            .base = (Event) {
+                .type = pressed_now ? EVENT_KEY_DOWN : EVENT_KEY_UP
+            },
+            .key = i
+        };
+        ui_propagate_event(root, (Event*)&event, mouse_pos);
+    }
+
+    // Great naming claire
+    if (!vec2_eq(mouse_position, mouse_pos)) {
+        MouseMoveEvent event = (MouseMoveEvent) {
+            .base = (Event) { .type = EVENT_MOUSE_MOVE },
+            .position = mouse_position,
+            .delta = vec2_sub(mouse_pos, mouse_position)
+        };
+        mouse_position = mouse_pos;
+        ui_propagate_event(root, (Event*)&event, mouse_pos);
+    }
+
+
+    // Mouse wheel
+    Vector2 wheel = GetMouseWheelMoveV();
+
+    if (fabs(wheel.x) > 0.001f) {
+        MouseWheelEvent event = {
+            .base = (Event) { .type = EVENT_MOUSE_WHEEL },
+            .delta = wheel.x,
+            .axis = AXIS_X
+        };
+        ui_propagate_event(root, (Event*)&event, mouse_pos);
+    }
+
+    if (fabs(wheel.y) > 0.001f) {
+        MouseWheelEvent event = {
+            .base = (Event) { .type = EVENT_MOUSE_WHEEL },
+            .delta = wheel.y,
+            .axis = AXIS_Y
+        };
+        ui_propagate_event(root, (Event*)&event, mouse_pos);
+    }
+
 }
 
 int main() {
@@ -258,80 +379,13 @@ int main() {
     camera.camera.projection = CAMERA_PERSPECTIVE;
     look_at((Vector3) { 0.0f, 0.0f, 0.0f });
 
-    uint32_t mouse_buttons_down = 0;
-    Vec2 mouse_position = { 0 };
     Vec2 window_size = { 0 };
-    // This suks
-    bool keys_down[512] = { 0 };
 
     // TODO: On events only
     SetTargetFPS(60);
 
     while (!WindowShouldClose()) {
-        TickEvent tick_event = (TickEvent) {
-            .base = (Event) { .type = EVENT_TICK },
-        };
-        ui_propagate_event(ui_root, (Event*)&tick_event);
-
-        uint32_t new_mouse_buttons_down = 0;
-        for (int i=0; i<=MOUSE_BUTTON_BACK; i++) {
-            uint32_t mask = 1 << i;
-            bool was_down = (mouse_buttons_down & mask) != 0;
-
-            if (IsMouseButtonDown(i)) {
-                new_mouse_buttons_down |= mask;
-
-                if (!was_down) {
-                    MouseButtonEvent event = (MouseButtonEvent) {
-                        .base = (Event) { .type = EVENT_MOUSE_DOWN },
-                        .button = i
-                    };
-                    ui_propagate_event(ui_root, (Event*)&event);
-                }
-            } else if (was_down) {
-                // MOUSE UP
-                MouseButtonEvent event = (MouseButtonEvent) {
-                    .base = (Event) { .type = EVENT_MOUSE_UP },
-                    .button = i
-                };
-                ui_propagate_event(ui_root, (Event*)&event);
-            }
-        }
-        mouse_buttons_down = new_mouse_buttons_down;
-
-        for (int i=0; i<512; i++) {
-            bool pressed_now = IsKeyDown(i);
-            bool pressed_then = keys_down[i];
-
-            if (pressed_now == pressed_then)
-                continue;
-
-            keys_down[i] = pressed_now;
-
-            KeyEvent event = (KeyEvent) {
-                .base = (Event) {
-                    .type = pressed_now ? EVENT_KEY_DOWN : EVENT_KEY_UP
-                },
-                .key = i
-            };
-            ui_propagate_event(ui_root, (Event*)&event);
-        }
-
-
-        Vec2 new_mouse_position = {
-            .x = GetMouseX(),
-            .y = GetMouseY()
-        };
-
-        if (!vec2_eq(mouse_position, new_mouse_position)) {
-            MouseMoveEvent event = (MouseMoveEvent) {
-                .base = (Event) { .type = EVENT_MOUSE_MOVE },
-                .position = mouse_position,
-                .delta = vec2_sub(new_mouse_position, mouse_position)
-            };
-            mouse_position = new_mouse_position;
-            ui_propagate_event(ui_root, (Event*)&event);
-        }
+        do_events(ui_root);
 
         Vec2 new_window_size = {
             .x = GetRenderWidth(),
@@ -406,7 +460,7 @@ int main() {
 
         // Window
         BeginDrawing();
-            ClearBackground(RAYWHITE);
+            ClearBackground(MAGENTA);
             ui_render(ui_root, NULL);
         EndDrawing();
 
