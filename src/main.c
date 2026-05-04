@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <pthread.h>
 
+#include "rlgl.h"
 #include "Math.h"
 #include "Primitive.h"
 #include "UI/Builder.h"
@@ -27,6 +28,7 @@ static UIComponent* material_frame;
 static ViewportCamera camera = { 0 };
 static PullTarget pull_target = { 0 };
 static bool rotating_camera = false;
+static Vector2 grid_pos = { 0 };
 static Primitive* box;
 
 static int grid_power = 0;
@@ -99,6 +101,22 @@ void viewport_on_key_down(KeyEvent* event) {
     }
 }
 
+void draw_grid(float spacing) {
+    int half_slices = 10.0f / spacing;
+
+    rlBegin(RL_LINES);
+        rlColor3f(0.75f, 0.75f, 0.75f);
+
+        for (int i = -half_slices; i <= half_slices; i++) {
+            rlVertex3f((float)i*spacing + grid_pos.x, 1.0f, (float)-half_slices*spacing + grid_pos.y);
+            rlVertex3f((float)i*spacing + grid_pos.x, 1.0f, (float)half_slices*spacing + grid_pos.y);
+
+            rlVertex3f((float)-half_slices*spacing + grid_pos.x, 1.0f, (float)i*spacing + grid_pos.y);
+            rlVertex3f((float)half_slices*spacing + grid_pos.x, 1.0f, (float)i*spacing + grid_pos.y);
+        }
+    rlEnd();
+}
+
 
 void look_at(Vector3 pos) {
     Vector3 diff = normalize((Vector3) {
@@ -116,6 +134,16 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
         event->position.x - viewport->base.render_position.x,
         viewport->base.render_size.y - (event->position.y - viewport->base.render_position.y)
     };
+
+    Ray ray = GetScreenToWorldRayEx(
+        mouse_pos,
+        camera.camera,
+        viewport->base.render_size.x,
+        viewport->base.render_size.y
+    );
+    float t = -ray.position.y / ray.direction.y;
+    grid_pos.x = (int)(ray.position.x + t * ray.direction.x);
+    grid_pos.y = (int)(ray.position.z + t * ray.direction.z);
 
     if (pull_target.pulling) {
         Vector2 hit = GetWorldToScreenEx(
@@ -159,12 +187,6 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
         
         pull_target.pull = units;
     } else {
-        Ray ray = GetScreenToWorldRayEx(
-            mouse_pos,
-            camera.camera,
-            viewport->base.render_size.x,
-            viewport->base.render_size.y
-        );
         RayCollision collision = prim_ray_collide(box, ray);
 
         pull_target.target = collision.hit ? box : NULL;
@@ -188,7 +210,6 @@ void mat_button_down(MouseButtonEvent* event) {
     material_frame->visible = false;
     Matthewterial* mat = (Matthewterial*)event->base.target->data;
 
-    printf("Hello \n");
     box->material.maps[0].texture = mat->color.texture;
 }
 
@@ -220,6 +241,7 @@ UIComponent* build_root(Vec* materials) {
         24,
         8
     );
+    material_frame->visible = false;
 
     UIComponent* mat_stack = ui_stack(material_frame, SIZE(GROW(1), GROW(1)), AXIS_Y, 12);
     UIComponent* mat_label = ui_label(mat_stack, SIZE(GROW(1), PX(20)), "Material Library", 24);
@@ -417,7 +439,7 @@ int main() {
             ClearBackground(BLACK);
             BeginMode3D(camera.camera);
                 float grid_size = pow(2.0, grid_power);
-                DrawGrid(15.0f / grid_size, grid_size);
+                draw_grid(grid_size);
 
                 Vector3 size = vec3_sub(box->bounds.max, box->bounds.min);
                 Vector3 pos = vec3_add(
@@ -425,21 +447,14 @@ int main() {
                     (Vector3) { size.x / 2.0f, size.y / 2.0f, size.z / 2.0f }
                 );
 
-                DrawMesh(
-                    box->mesh,
-                    box->material,
-                    prim_get_transform(box)
-                );
-
-                //DrawCubeV(pos, size, WHITE);
+                DrawMesh(box->mesh, box->material, prim_get_transform(box));
                 DrawCubeWiresV(pos, size, (Color) { 0, 0, 0, 0xAA });
-
 
                 if (pull_target.target) {
                     Vector3 ghost_pos = {
-                        pos.x + (0.5 * size.x * pull_target.normal.x),
-                        pos.y + (0.5 * size.y * pull_target.normal.y),
-                        pos.z + (0.5 * size.z * pull_target.normal.z)
+                        pos.x + (0.505 * size.x * pull_target.normal.x),
+                        pos.y + (0.505 * size.y * pull_target.normal.y),
+                        pos.z + (0.505 * size.z * pull_target.normal.z)
                     };
 
                     Vector3 ghost_size = {

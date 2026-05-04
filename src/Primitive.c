@@ -12,7 +12,7 @@ BoxPrimitive* make_box() {
     b->base.type = PRIMITIVE_BOX;
     b->base.bounds = (BoundingBox) {
         (Vector3) { 0.0f, 0.0f, 0.0f },
-        (Vector3) { 1.0f, -1.0f, 1.0f }
+        (Vector3) { 1.0f, 1.0f, 1.0f }
     };
     b->base.material = LoadMaterialDefault();
 
@@ -36,7 +36,6 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
     }
 
     prim->mesh = (Mesh) { 0 };
-
     Vector3 size = vec3_sub(prim->bounds.max, prim->bounds.min);
 
     float vertices[] = {
@@ -152,14 +151,24 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
 }
 
 void prim_resize(Primitive* prim, Vector3 normal, float magnitude) {
+    // Let's play a game called no judgement
+
     // change max if resizing on positive axis, otherwise min
     float* xAxis = normal.x > 0.0f ? &prim->bounds.max.x : &prim->bounds.min.x;
-    float* yAxis = normal.y > 0.0f ? &prim->bounds.max.y : &prim->bounds.min.y;
-    float* zAxis = normal.z > 0.0f ? &prim->bounds.max.z : &prim->bounds.min.z;
+    float* xOffAxis = normal.x > 0.0f ? &prim->bounds.min.x : &prim->bounds.max.x;
 
-    *(xAxis) += normal.x * magnitude;
-    *(yAxis) += normal.y * magnitude;
-    *(zAxis) += normal.z * magnitude;
+    float* yAxis = normal.y > 0.0f ? &prim->bounds.max.y : &prim->bounds.min.y;
+    float* yOffAxis = normal.y > 0.0f ? &prim->bounds.min.y : &prim->bounds.max.y;
+
+    float* zAxis = normal.z > 0.0f ? &prim->bounds.max.z : &prim->bounds.min.z;
+    float* zOffAxis = normal.z > 0.0f ? &prim->bounds.min.z : &prim->bounds.max.z;
+
+    Vector3 diff = Vector3Scale(normal, magnitude);
+    Vector3 result = { *xAxis + diff.x, *yAxis + diff.y, *zAxis + diff.z };
+
+    *(xAxis) += (normal.x * (result.x - *xOffAxis)) > 0.0f ? diff.x : 0.0f;
+    *(yAxis) += (normal.y * (result.y - *yOffAxis)) > 0.0f ? diff.y : 0.0f;
+    *(zAxis) += (normal.z * (result.z - *zOffAxis)) > 0.0f ? diff.z : 0.0f;
 
     prim_recompute_mesh(prim, false);
 }
