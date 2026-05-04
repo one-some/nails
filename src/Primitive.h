@@ -9,7 +9,7 @@ typedef enum {
 typedef struct {
     PrimitiveType type;
     BoundingBox bounds;
-    Mesh mesh;
+    Mesh meshes[6];
     Material material;
 } Primitive;
 

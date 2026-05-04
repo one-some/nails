@@ -142,8 +142,10 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
         viewport->base.render_size.y
     );
     float t = -ray.position.y / ray.direction.y;
-    grid_pos.x = (int)(ray.position.x + t * ray.direction.x);
-    grid_pos.y = (int)(ray.position.z + t * ray.direction.z);
+
+    const float grid_size = pow(2.0f, grid_power);
+    grid_pos.x = ((int)((ray.position.x + t * ray.direction.x) / grid_size)) * grid_size;
+    grid_pos.y = ((int)((ray.position.z + t * ray.direction.z) / grid_size)) * grid_size;
 
     if (pull_target.pulling) {
         Vector2 hit = GetWorldToScreenEx(
@@ -447,7 +449,9 @@ int main() {
                     (Vector3) { size.x / 2.0f, size.y / 2.0f, size.z / 2.0f }
                 );
 
-                DrawMesh(box->mesh, box->material, prim_get_transform(box));
+                for (int i=0; i<6; i++) {
+                    DrawMesh(box->meshes[i], box->material, prim_get_transform(box));
+                }
                 DrawCubeWiresV(pos, size, (Color) { 0, 0, 0, 0xAA });
 
                 if (pull_target.target) {

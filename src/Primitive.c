@@ -14,8 +14,8 @@ BoxPrimitive* make_box() {
         (Vector3) { 0.0f, 0.0f, 0.0f },
         (Vector3) { 1.0f, 1.0f, 1.0f }
     };
-    b->base.material = LoadMaterialDefault();
 
+    b->base.material = LoadMaterialDefault();
     b->base.material.maps[0].color = WHITE;
 
     prim_recompute_mesh(&b->base, true);
@@ -32,33 +32,38 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
 
     // TODO: Maybe track this in a MeshState flag or something with EMPTY, DIRTY, CLEAN, etc.
     if (!new) {
-        UnloadMesh(prim->mesh);
+        for (int i=0; i<6; i++) {
+            UnloadMesh(prim->meshes[i]);
+        }
     }
 
-    prim->mesh = (Mesh) { 0 };
     Vector3 size = vec3_sub(prim->bounds.max, prim->bounds.min);
-
     float vertices[] = {
         0, 0, size.z,
         size.x, 0, size.z,
         size.x, size.y, size.z,
         0, size.y, size.z,
+
         0, 0, 0,
         0, size.y, 0,
         size.x, size.y, 0,
         size.x, 0, 0,
+
         0, size.y, 0,
         0, size.y, size.z,
         size.x, size.y, size.z,
         size.x, size.y, 0,
+
         0, 0, 0,
         size.x, 0, 0,
         size.x, 0, size.z,
         0, 0, size.z,
+
         size.x, 0, 0,
         size.x, size.y, 0,
         size.x, size.y, size.z,
         size.x, 0, size.z,
+
         0, 0, 0,
         0, 0, size.z,
         0, size.y, size.z,
@@ -67,29 +72,34 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
 
     float texcoords[] = {
         0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
+        size.x, 0.0f,
+        size.x, size.y,
+        0.0f, size.y,
+
+        size.x, 0.0f,
+        size.x, size.y,
+        0.0f, size.y,
         0.0f, 0.0f,
-        0.0f, 1.0f,
+
+        0.0f, size.z,
         0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
+        size.x, 0.0f,
+        size.x, size.z,
+
+        size.x, size.z,
+        0.0f, size.z,
         0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f,
+        size.x, 0.0f,
+
+        size.z, 0.0f,
+        size.z, size.y,
+        0.0f, size.y,
         0.0f, 0.0f,
+
         0.0f, 0.0f,
-        1.0f, 0.0f,
-        1.0f, 1.0f,
-        0.0f, 1.0f
+        size.z, 0.0f,
+        size.z, size.y,
+        0.0f, size.y
     };
 
     float normals[] = {
@@ -97,57 +107,61 @@ void prim_recompute_mesh(Primitive* prim, bool new) {
         0.0f, 0.0f, 1.0f,
         0.0f, 0.0f, 1.0f,
         0.0f, 0.0f, 1.0f,
+
         0.0f, 0.0f,-1.0f,
         0.0f, 0.0f,-1.0f,
         0.0f, 0.0f,-1.0f,
         0.0f, 0.0f,-1.0f,
+
         0.0f, 1.0f, 0.0f,
         0.0f, 1.0f, 0.0f,
         0.0f, 1.0f, 0.0f,
         0.0f, 1.0f, 0.0f,
+
         0.0f,-1.0f, 0.0f,
         0.0f,-1.0f, 0.0f,
         0.0f,-1.0f, 0.0f,
         0.0f,-1.0f, 0.0f,
+
         1.0f, 0.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
         1.0f, 0.0f, 0.0f,
+
         -1.0f, 0.0f, 0.0f,
         -1.0f, 0.0f, 0.0f,
         -1.0f, 0.0f, 0.0f,
         -1.0f, 0.0f, 0.0f
     };
 
-    prim->mesh.vertices = (float *)RL_MALLOC(24*3*sizeof(float));
-    memcpy(prim->mesh.vertices, vertices, 24*3*sizeof(float));
+    for (int i=0; i<6; i++) {
+        Mesh mesh = { 0 };
 
-    prim->mesh.texcoords = (float *)RL_MALLOC(24*2*sizeof(float));
-    memcpy(prim->mesh.texcoords, texcoords, 24*2*sizeof(float));
+        mesh.vertices = (float*)malloc(4*3*sizeof(float));
+        memcpy(mesh.vertices, vertices + 4*3*i, 4*3*sizeof(float));
 
-    prim->mesh.normals = (float *)RL_MALLOC(24*3*sizeof(float));
-    memcpy(prim->mesh.normals, normals, 24*3*sizeof(float));
+        mesh.texcoords = (float*)RL_MALLOC(4*2*sizeof(float));
+        memcpy(mesh.texcoords, texcoords + 4*2*i, 4*2*sizeof(float));
 
-    prim->mesh.indices = (unsigned short *)RL_MALLOC(36*sizeof(unsigned short));
+        mesh.normals = (float *)RL_MALLOC(24*3*sizeof(float));
+        memcpy(mesh.normals, normals, 24*3*sizeof(float));
 
-    int k = 0;
-    for (int i = 0; i < 36; i += 6) {
-        prim->mesh.indices[i] = 4*k;
-        prim->mesh.indices[i + 1] = 4*k + 1;
-        prim->mesh.indices[i + 2] = 4*k + 2;
-        prim->mesh.indices[i + 3] = 4*k;
-        prim->mesh.indices[i + 4] = 4*k + 2;
-        prim->mesh.indices[i + 5] = 4*k + 3;
+        mesh.indices = (unsigned short *)RL_MALLOC(6*sizeof(unsigned short));
+        mesh.indices[0] = 0;
+        mesh.indices[1] = 1;
+        mesh.indices[2] = 2;
+        mesh.indices[3] = 0;
+        mesh.indices[4] = 2;
+        mesh.indices[5] = 3;
 
-        k++;
+        mesh.vertexCount = 4;
+        mesh.triangleCount = 2;
+
+        // We do a full reupload for now instead of updating the buffer, cuz we can't resize it
+        // Future optimization idea would to be checking the size and maybe updating
+        prim->meshes[i] = mesh;
+        UploadMesh(&prim->meshes[i], false);
     }
-
-    prim->mesh.vertexCount = 24;
-    prim->mesh.triangleCount = 12;
-
-    // We do a full reupload for now instead of updating the buffer, cuz we can't resize it
-    // Future optimization idea would to be checking the size and maybe updating
-    UploadMesh(&prim->mesh, false);
 }
 
 void prim_resize(Primitive* prim, Vector3 normal, float magnitude) {

@@ -103,7 +103,6 @@ void materials_populate_from_disk(Vec* materials, const char* directory) {
             mat->color.path = malloc(strlen(path) + 1);
             strcpy(mat->color.path, path);
         }
-        printf("%s - %s, slug: %s\n", path, mat->name, slug);
     }
 
     closedir(texture_dir);
