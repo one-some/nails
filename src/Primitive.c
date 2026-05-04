@@ -11,8 +11,8 @@ BoxPrimitive* make_box() {
     BoxPrimitive* b = malloc(sizeof *b);
     b->base.type = PRIMITIVE_BOX;
     b->base.bounds = (BoundingBox) {
-        (Vector3) { 0.0f, 0.0f, 0.0f },
-        (Vector3) { 1.0f, 1.0f, 1.0f }
+        (Vector3) { 0.0f, -1.0f, 0.0f },
+        (Vector3) { 1.0f, 0.0f, 1.0f }
     };
 
     b->base.material = LoadMaterialDefault();

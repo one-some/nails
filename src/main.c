@@ -28,7 +28,7 @@ static UIComponent* material_frame;
 static ViewportCamera camera = { 0 };
 static PullTarget pull_target = { 0 };
 static bool rotating_camera = false;
-static Vector2 grid_pos = { 0 };
+static Vector2 pointer_pos = { 0 };
 static Primitive* box;
 
 static int grid_power = 0;
@@ -108,11 +108,11 @@ void draw_grid(float spacing) {
         rlColor3f(0.75f, 0.75f, 0.75f);
 
         for (int i = -half_slices; i <= half_slices; i++) {
-            rlVertex3f((float)i*spacing + grid_pos.x, 1.0f, (float)-half_slices*spacing + grid_pos.y);
-            rlVertex3f((float)i*spacing + grid_pos.x, 1.0f, (float)half_slices*spacing + grid_pos.y);
+            rlVertex3f((float)i*spacing + pointer_pos.x, 0.0f, (float)-half_slices*spacing + pointer_pos.y);
+            rlVertex3f((float)i*spacing + pointer_pos.x, 0.0f, (float)half_slices*spacing + pointer_pos.y);
 
-            rlVertex3f((float)-half_slices*spacing + grid_pos.x, 1.0f, (float)i*spacing + grid_pos.y);
-            rlVertex3f((float)half_slices*spacing + grid_pos.x, 1.0f, (float)i*spacing + grid_pos.y);
+            rlVertex3f((float)-half_slices*spacing + pointer_pos.x, 0.0f, (float)i*spacing + pointer_pos.y);
+            rlVertex3f((float)half_slices*spacing + pointer_pos.x, 0.0f, (float)i*spacing + pointer_pos.y);
         }
     rlEnd();
 }
@@ -144,8 +144,8 @@ void viewport_on_mouse_move(MouseMoveEvent* event) {
     float t = -ray.position.y / ray.direction.y;
 
     const float grid_size = pow(2.0f, grid_power);
-    grid_pos.x = ((int)((ray.position.x + t * ray.direction.x) / grid_size)) * grid_size;
-    grid_pos.y = ((int)((ray.position.z + t * ray.direction.z) / grid_size)) * grid_size;
+    pointer_pos.x = ((int)((ray.position.x + t * ray.direction.x) / grid_size)) * grid_size;
+    pointer_pos.y = ((int)((ray.position.z + t * ray.direction.z) / grid_size)) * grid_size;
 
     if (pull_target.pulling) {
         Vector2 hit = GetWorldToScreenEx(
@@ -374,7 +374,7 @@ int main() {
     InitWindow(
         800,
         500,
-        "nailzz"
+        "Nails"
     );
     ui_font = LoadFontEx("ibm.ttf", 24, NULL, 0);
     SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
@@ -442,6 +442,16 @@ int main() {
             BeginMode3D(camera.camera);
                 float grid_size = pow(2.0, grid_power);
                 draw_grid(grid_size);
+                DrawSphere(
+                    (Vector3) {
+                        pointer_pos.x,
+                        0.0f,
+                        pointer_pos.y,
+                    },
+                    0.1,
+                    RED
+                );
+
 
                 Vector3 size = vec3_sub(box->bounds.max, box->bounds.min);
                 Vector3 pos = vec3_add(
