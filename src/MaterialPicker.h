@@ -7,9 +7,7 @@
 typedef struct {
     char* name;
     char* path;
-    LazyTexture color;
+    LazyTexture* color;
 } Matthewterial;
 
 void materials_populate_from_disk(Vec* materials, const char* directory);
-void* materials_lazy_load_thread(void* arg);
-void materials_lazy_load_online(Vec* materials);

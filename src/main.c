@@ -87,10 +87,12 @@ void viewport_on_mouse_up(MouseButtonEvent* event) {
 void viewport_on_key_down(KeyEvent* event) {
     switch (event->key) {
         case KEY_ONE:
+        case KEY_MINUS:
             // yes these both suck
             grid_power = fmax(grid_power - 1, -4);
             break;
         case KEY_TWO:
+        case KEY_EQUAL:
             grid_power = fmin(grid_power + 1, 4);
             break;
         case KEY_M:
@@ -212,15 +214,22 @@ void mat_button_down(MouseButtonEvent* event) {
     material_frame->visible = false;
     Matthewterial* mat = (Matthewterial*)event->base.target->data;
 
-    box->material.maps[0].texture = mat->color.texture;
+    box->material.maps[0].texture = mat->color->texture;
 }
 
 UIComponent* build_root(Vec* materials) {
     UIComponent* root = ui_container(NULL, SIZE(PX(800), PX(500)));
     UIComponent* primary = ui_stack(root, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
 
-    UIComponent* top = ui_frame(primary, SIZE(GROW(1), PX(20)), RED, 0, 0);
-    UIComponent* label = ui_label(top, SIZE(GROW(1), GROW(1)), "nailzz! olympic girl drama", 24);
+    UIComponent* top = ui_frame(primary, SIZE(GROW(1), PX(32)), (Color) { 0x77, 0, 0, 0xFF }, 0, 0);
+    UIComponent* top_stack = ui_stack(top, SIZE(GROW(1), GROW(1)), AXIS_X, 0);
+    UIComponent* label = ui_label(top_stack, SIZE(PX(300), GROW(1)), "Nails", 32);
+
+    UIComponent* button_face = ui_image(top_stack, SIZE(OTHER(), GROW(1)), load_lazy_texture("static/face.png"));
+    UIComponent* button_edge = ui_image(top_stack, SIZE(OTHER(), GROW(1)), load_lazy_texture("static/edge.png"));
+    UIComponent* button_vertex = ui_image(top_stack, SIZE(OTHER(), GROW(1)), load_lazy_texture("static/vertex.png"));
+    UIComponent* button_grow = ui_image(top_stack, SIZE(OTHER(), GROW(1)), load_lazy_texture("static/grow.png"));
+    UIComponent* button_shrink = ui_image(top_stack, SIZE(OTHER(), GROW(1)), load_lazy_texture("static/shrink.png"));
 
     UIComponent* middle = ui_stack(primary, SIZE(GROW(1), GROW(1)), AXIS_X, 0);
 
@@ -232,7 +241,8 @@ UIComponent* build_root(Vec* materials) {
     viewport->base.event_handlers.on_mouse_move = &viewport_on_mouse_move;
     viewport->base.event_handlers.on_key_down = &viewport_on_key_down;
 
-    UIComponent* right = ui_frame(middle, SIZE(PX(300), GROW(1)), (Color) {0, 0, 0, 200}, 0, 0);
+    //UIComponent* right = ui_frame(middle, SIZE(PX(300), GROW(1)), (Color) {0, 0, 0, 200}, 0, 0);
+    //ui_label(right, SIZE(GROW(1), PX(100)), "nailzz! olympic girl drama", 24);
     UIComponent* bottom = ui_frame(primary, SIZE(GROW(1), PX(20)), BLUE, 0, 0);
 
     /* Material Picker <3 */
@@ -262,7 +272,7 @@ UIComponent* build_root(Vec* materials) {
         Matthewterial* mat = materials->data[i];
 
         UIComponent* a_mat_stack = ui_stack(mat_grid, SIZE(GROW(1), GROW(1)), AXIS_Y, 0);
-        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), &mat->color);
+        ui_image(a_mat_stack, SIZE(GROW(1), OTHER()), mat->color);
         ui_label(a_mat_stack, SIZE(GROW(1), GROW(1)), mat->name, 24);
 
         a_mat_stack->data = mat;
@@ -368,6 +378,54 @@ void do_events(UIComponent* root) {
 
 }
 
+Font load_font(const char* path) {
+    const int font_size = 32;
+
+    int length = 0;
+    unsigned char* data = LoadFileData(path, &length);
+    assert(data);
+    assert(length > 0);
+
+    Font font = {
+        .baseSize = font_size,
+        .glyphPadding = 4
+    };
+
+    font.glyphs = LoadFontData(
+        data,
+        length,
+        font.baseSize,
+        NULL,
+        95,
+        FONT_BITMAP,
+        &font.glyphCount
+    );
+    font.glyphCount = 95;
+
+    assert(font.glyphs);
+    assert(font.glyphCount);
+    UnloadFileData(data);
+
+    Image atlas = GenImageFontAtlas(
+        font.glyphs,
+        &font.recs,
+        font.glyphCount,
+        font.baseSize,
+        font.glyphPadding,
+        0
+    );
+    font.texture = LoadTextureFromImage(atlas);
+    SetTextureFilter(font.texture, TEXTURE_FILTER_POINT);
+
+    for (int i=0; i<font.glyphCount; i++) {
+        UnloadImage(font.glyphs[i].image);
+        font.glyphs[i].image = ImageFromImage(atlas, font.recs[i]);
+    }
+    UnloadImage(atlas);
+
+    return font;
+}
+
 int main() {
     SetTraceLogLevel(LOG_WARNING);
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
@@ -376,8 +434,8 @@ int main() {
         500,
         "Nails"
     );
-    ui_font = LoadFontEx("ibm.ttf", 24, NULL, 0);
-    SetTextureFilter(ui_font.texture, TEXTURE_FILTER_POINT);
+
+    ui_font = load_font("static/gothic.ttf");
 
     Vec materials = { 0 };
     materials_populate_from_disk(&materials, "textures");
@@ -386,7 +444,7 @@ int main() {
     ui_layout(ui_root, NULL);
 
     pthread_t thread;
-    pthread_create(&thread, NULL, materials_lazy_load_thread, &materials);
+    pthread_create(&thread, NULL, lazy_texture_load_thread, NULL);
     pthread_detach(thread);
 
     box = (Primitive*)make_box();
@@ -493,7 +551,7 @@ int main() {
             ui_render(ui_root, NULL);
         EndDrawing();
 
-        materials_lazy_load_online(&materials);
+        lazy_texture_load_online();
     }
 
     UnloadFont(ui_font);
